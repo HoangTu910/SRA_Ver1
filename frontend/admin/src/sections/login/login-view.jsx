@@ -28,22 +28,31 @@ function Login() {
       const idToken = await userCredential.user.getIdToken();
       
       console.log('Token:', idToken); // Log token for debugging
+      const token = idToken
+      console.log('Login payload:', { email, password, token });
       const response = await axios.post(
         "http://localhost:6969/api/user/login",
-        { email, password }
+        { email, password, token },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
       );
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error('Network response was not ok'); 
       }
+      
       setSuccess(true); // Set success state to true
-      navigate('/user'); // Navigate to dashboard on successful login
+      navigate('/'); // Navigate to dashboard on successful login
     } catch (error) {
       console.error('Error signing in with email and password:', error);
       setError('Invalid email or password.'); // Set error state
       setSuccess(false); // Set success state to false
     }
   };
+  
   
 
   const handleGoogleLogin = async () => {

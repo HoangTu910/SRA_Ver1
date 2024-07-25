@@ -4,10 +4,13 @@ const port = 6969;
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const route = require("./routes");
+const mqttService = require('./app/services/MqttService');
 
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.json());
+
+mqttService.initMQTT();
 
 route(app);
 

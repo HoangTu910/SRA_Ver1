@@ -10,7 +10,7 @@ const {
 const router = express.Router();
 
 router.post('/', HeartrateController.createHeartrate);
-router.delete('/abc', deleteAllHeartrateDocumentsController);
+router.delete('/delete', deleteAllHeartrateDocumentsController);
 router.delete('/:id', deleteHeartrateByIdController);
 router.delete('/condition', deleteHeartrateByConditionController);
 
