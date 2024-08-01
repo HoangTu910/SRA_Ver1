@@ -55,11 +55,11 @@ exports.getDataFromDatabaseController = async (req, res) => {
     const deviceData = await getDataFromDatabase(userId);
     console.log('Fetched device data:', deviceData); // Log the entire fetched data to verify its structure
 
-    if (!deviceData || !deviceData.deviceId) {
-      return res.status(404).json({ message: 'Device not found' });
-    }
+    // if (!deviceData || !deviceData.deviceId) {
+    //   return res.status(404).json({ message: 'Device not found' });
+    // }
 
-    res.json({ deviceId: deviceData.deviceId });
+    res.json({ deviceData });
   } catch (error) {
     console.error('Error fetching data from database:', error);
     res.status(500).send('Server error');

@@ -29,28 +29,45 @@ export default function AppView() {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        var user = auth.currentUser;
-        // console.log(user);
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
         const userUId = user.uid;
         console.log("User ID: ", userUId);
-        console.log("1111");
+
+        // Fetch device data
         const deviceResponse = await axios.post('http://113.161.225.11:6969/api/devices/data', { userId: userUId });
-        console.log("1111");
-        //fetch 
+        console.log("Device Response: ", deviceResponse.data);
 
-        // console.log(response);
-        const fetchedDeviceId = deviceResponse.data.deviceId;
-        console.log("Device Response: ", deviceResponse);
+        // Ensure device data is available
+        if (!deviceResponse.data || !Array.isArray(deviceResponse.data.deviceData) || deviceResponse.data.deviceData.length === 0) {
+          throw new Error('No device data available');
+        }
 
+        // Extract deviceId from response
+        const fetchedDeviceId = deviceResponse.data.deviceData[0]?.deviceId;
         if (!fetchedDeviceId) {
           throw new Error("Device ID not found in response");
         }
+
         console.log("Fetched Device ID:", fetchedDeviceId);
         setDeviceId(fetchedDeviceId);
-        if (fetchedDeviceId) {
-          const sensorResponse = await axios.post('http://113.161.225.11:6969/api/devices/datasensor', { deviceId: fetchedDeviceId });
-          setSensorData(sensorResponse.data);
-        }
+
+        // Fetch sensor data
+        const sensorResponse = await axios.post('http://113.161.225.11:6969/api/devices/datasensor', { deviceId: fetchedDeviceId });
+        console.log("Sensor Response: ", sensorResponse.data);
+
+        // Update metrics state with fetched sensor data
+        const { heart_rate, spO2, temperature } = sensorResponse.data.total;
+        setMetrics({
+          heart_rate: Number(heart_rate),
+          spO2: Number(spO2),
+          temperature: Number(temperature)
+        });
+        setSensorData(sensorResponse.data);
+        console.log("Metrics: ", metrics);
       } catch (err) {
         console.error('Error fetching metrics data:', err);
         setError('Failed to load data');
@@ -83,7 +100,7 @@ export default function AppView() {
           <AppWidgetSummary
             sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Heart Rate"
-            total={metrics.heart_rate}
+            total={metrics.heart_rate ?? 0}
             color="success"
             icon={<img 
               alt="icon" 
@@ -97,7 +114,7 @@ export default function AppView() {
           <AppWidgetSummary
             sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="SpO2"
-            total={98}
+            total={metrics.spO2 ?? 0}
             color="info"
             icon={<img 
               alt="icon" 
@@ -111,7 +128,7 @@ export default function AppView() {
           <AppWidgetSummary
             sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Body Temperature"
-            total={37}
+            total={metrics.temperature ?? 0}
             color="warning"
             icon={<img alt="icon" style={{ width: '50px', height: '50px' }} src="/assets/icons/glass/thermometer.png" />}
           />

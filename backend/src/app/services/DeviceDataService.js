@@ -130,9 +130,25 @@ class DeviceDataService {
         throw new Error('No such document!');
       }
   
-      // Return the document data
+      // Extract the data from the document
+      const data = doc.data();
+  
+      // Return specific field values if they exist
+      const heart_rate = data.heart_rate;
+      const spO2 = data.spO2;
+      const temperature = data.temperature;
+  
       console.log('Data Sensor retrieved successfully.');
-      return { id: doc.id, ...doc.data() };
+      console.log('heart_rate: ', heart_rate);
+      console.log('spO2: ', spO2);
+      console.log('temperature: ', temperature);
+      // Return an object with specific field values
+      return {
+        id: doc.id,
+        heart_rate,
+        spO2,
+        temperature
+      };
     } catch (error) {
       console.error('Error retrieving data from Firestore:', error);
       throw error; // Rethrow error to be handled by the caller
