@@ -33,11 +33,16 @@ const loginUser = async (idToken) => {
     try {
         // Verify the ID token
         const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const userRecord = await admin.auth().getUser(decodedToken.uid);
         const uid = decodedToken.uid;
 
         // Log UID for debugging
         console.log('User authenticated, UID:', uid);
-        return { uid };
+        return {
+            uid: userRecord.uid,
+            email: userRecord.email,
+            displayName: userRecord.displayName,
+        };
     } catch (error) {
         console.error('Error verifying ID token:', error.message);
         throw new Error('Error verifying ID token: ' + error.message);

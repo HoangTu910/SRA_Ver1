@@ -13,7 +13,7 @@ const data = [
 
 const MainContent = () => {
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3, background: 'linear-gradient(to right, #00c6ff 0%, #0072ff 100%)'}}>
       <Typography variant="h4" gutterBottom>
         Hi, Gleb Kuznetsov, it seems you are in Perfect Body Shape
       </Typography>
@@ -22,7 +22,7 @@ const MainContent = () => {
       </Typography>
       <Grid container spacing={3}>
         <Grid item xs={12}>
-          <Paper sx={{ p: 2 }}>
+          <Paper sx={{ p: 2, }}>
             <Typography variant="h6">Blood Pressure</Typography>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={data}>

@@ -1,3 +1,7 @@
+const { db, FieldValue } = require('../../config/firebase');
+const { setDoc, doc } = require('firebase/firestore');
+const { admin, auth } = require('../../config/firebase'); 
+
 const { loginUser,
     logout,
     signUpUser
@@ -6,18 +10,30 @@ const { loginUser,
 class AuthController {
     loginController = async (req, res) => {
         const { token } = req.body;
-      
+    
         try {
-          if (!token) {
-            return res.status(400).json({ message: 'Token not provided' });
-          }
-      
-          const user = await loginUser(token);
-          res.status(200).json(user);
+            if (!token) {
+                return res.status(400).json({ message: 'Token not provided' });
+            }
+    
+            // Call the loginUser function to verify token and get user info
+            const user = await loginUser(token);
+    
+            // Store the user UID in Firestore
+            const userRef = db.collection('users').doc(user.uid);
+            await userRef.set({
+                email: user.email,
+                //displayName: user.displayName,
+                lastLogin: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+    
+            res.status(200).json(user);
         } catch (error) {
-          res.status(500).json({ message: error.message });
+            console.error('Error during login:', error); // Detailed logging
+            res.status(500).json({ message: 'Internal server error', error: error.message });
         }
     };
+    
 
     logOut = async (req, res) => {
         try {

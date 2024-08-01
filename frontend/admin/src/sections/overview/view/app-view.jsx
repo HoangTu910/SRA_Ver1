@@ -1,9 +1,10 @@
 import { faker } from '@faker-js/faker';
-
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import Container from '@mui/material/Container';
 import Grid from '@mui/material/Unstable_Grid2';
 import Typography from '@mui/material/Typography';
-
+import { auth } from '../../../config/firebase'
 import Iconify from '../../../components/iconify/iconify';
 
 import AppTasks from '../app-tasks';
@@ -19,17 +20,64 @@ import AppConversionRates from '../app-conversion-rates';
 // ----------------------------------------------------------------------
 
 export default function AppView() {
+  const [deviceId, setDeviceId] = useState(null);
+  const [metrics, setMetrics] = useState({ heart_rate: null, spO2: null, temperature: null });
+  const [sensorData, setSensorData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  console.log("1111");
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+
+        var user = auth.currentUser;
+        // console.log(user);
+        const userId = user.uid;
+        console.log("User ID: ", userId);
+        const deviceResponse = await axios.post('http://113.161.225.11:6969/api/devices/data', { userId });
+        const fetchedDeviceId = deviceResponse.data.deviceId;
+        if (!fetchedDeviceId) {
+          throw new Error("Device ID not found in response");
+        }
+        console.log("Fetched Device ID:", fetchedDeviceId);
+        setDeviceId(fetchedDeviceId);
+        if (fetchedDeviceId) {
+          const sensorResponse = await axios.post('http://113.161.225.11:6969/api/devices/datasensor', { deviceId: fetchedDeviceId });
+          setSensorData(sensorResponse.data);
+        }
+      } catch (err) {
+        console.error('Error fetching metrics data:', err);
+        setError('Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMetrics();
+  }, []);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>{error}</div>;
+
   return (
-    <Container maxWidth="xl">
-      <Typography variant="h4" sx={{ mb: 5 }}>
+    <Container maxWidth="xl"
+      // sx={{
+      //   background: 'radial-gradient(circle, #283771, transparent 100%), linear-gradient(to top left, #99ccff 0%, #ffffff 90%,  #99ccff 100%)', // Linear gradient background
+      //   py: 5,
+      //   width: '100%',
+      //   borderRadius: '25px', 
+      // }}
+    >
+      <Typography variant="h4" sx={{ mb: 5, color:'black'}}>
         Hi, Welcome back 👋
       </Typography>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={2}>
         <Grid xs={12} sm={6} md={3}>
           <AppWidgetSummary
+            sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Heart Rate"
-            total={96}
+            total={metrics.heart_rate}
             color="success"
             icon={<img 
               alt="icon" 
@@ -41,7 +89,8 @@ export default function AppView() {
 
         <Grid xs={12} sm={6} md={3}>
           <AppWidgetSummary
-            title="Spio2"
+            sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
+            title="SpO2"
             total={98}
             color="info"
             icon={<img 
@@ -54,6 +103,7 @@ export default function AppView() {
 
         <Grid xs={12} sm={6} md={3}>
           <AppWidgetSummary
+            sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Body Temperature"
             total={37}
             color="warning"
@@ -63,6 +113,7 @@ export default function AppView() {
 
         <Grid xs={12} sm={6} md={3}>
           <AppWidgetSummary
+            sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Blood Pressure"
             total={141/90}
             color="error"
@@ -72,6 +123,7 @@ export default function AppView() {
 
         <Grid xs={12} md={6} lg={8}>
           <AppWebsiteVisits
+            sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Data Record"
             subheader="Per hours"
             chart={{
@@ -114,6 +166,7 @@ export default function AppView() {
 
         <Grid xs={12} md={6} lg={4}>
           <AppCurrentVisits
+            sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Diagnosis"
             chart={{
               series: [
@@ -128,6 +181,7 @@ export default function AppView() {
 
         <Grid xs={12} md={6} lg={8}>
           <AppConversionRates
+            sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Conversion Rates"
             subheader="(+43%) than last year"
             chart={{
@@ -149,6 +203,7 @@ export default function AppView() {
 
         <Grid xs={12} md={6} lg={4}>
           <AppCurrentSubject
+            sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Current Subject"
             chart={{
               categories: ['English', 'History', 'Physics', 'Geography', 'Chinese', 'Math'],
@@ -161,8 +216,9 @@ export default function AppView() {
           />
         </Grid>
 
-        <Grid xs={12} md={6} lg={8}>
+        {/* <Grid xs={12} md={6} lg={8}>
           <AppNewsUpdate
+            sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="News Update"
             list={[...Array(5)].map((_, index) => ({
               id: faker.string.uuid(),
@@ -172,10 +228,11 @@ export default function AppView() {
               postedAt: faker.date.recent(),
             }))}
           />
-        </Grid>
+        </Grid> */}
 
-        <Grid xs={12} md={6} lg={4}>
+        {/* <Grid xs={12} md={6} lg={4}>
           <AppOrderTimeline
+            sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Order Timeline"
             list={[...Array(5)].map((_, index) => ({
               id: faker.string.uuid(),
@@ -190,10 +247,11 @@ export default function AppView() {
               time: faker.date.past(),
             }))}
           />
-        </Grid>
+        </Grid> */}
 
-        <Grid xs={12} md={6} lg={4}>
+        {/* <Grid xs={12} md={6} lg={4}>
           <AppTrafficBySite
+            sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Traffic by Site"
             list={[
               {
@@ -218,10 +276,11 @@ export default function AppView() {
               },
             ]}
           />
-        </Grid>
+        </Grid> */}
 
-        <Grid xs={12} md={6} lg={8}>
+        {/* <Grid xs={12} md={6} lg={8}>
           <AppTasks
+            sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Tasks"
             list={[
               { id: '1', name: 'Create FireStone Logo' },
@@ -231,7 +290,7 @@ export default function AppView() {
               { id: '5', name: 'Sprint Showcase' },
             ]}
           />
-        </Grid>
+        </Grid> */}
       </Grid>
     </Container>
   );

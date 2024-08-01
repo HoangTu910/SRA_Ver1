@@ -24,32 +24,50 @@ function Login() {
 
   const handleEmailLogin = async () => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await userCredential.user.getIdToken();
-      
-      console.log('Token:', idToken); // Log token for debugging
-      const token = idToken
-      console.log('Login payload:', { email, password, token });
-      const response = await axios.post(
-        "http://localhost:6969/api/user/login",
-        { email, password, token },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
+        // Sign in with Firebase Authentication
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const idToken = await userCredential.user.getIdToken();
+        
+        console.log('Token:', idToken); // Log token for debugging
+        
+        // Prepare payload for backend API
+        const loginPayload = {
+            email, password,
+            token: idToken
+        };
+        console.log('Login payload:', loginPayload);
+
+        // Make a request to the backend server
+        const response = await axios.post(
+          "http://113.161.225.11:6969/api/user/login",
+          { email, password, token: idToken },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        // Check if the response was successful
+        if (response.status === 200) {
+            const result = response.data;
+            
+            // Store token or session information
+            localStorage.setItem('authToken', result.token);
+            console.log('Login successful');
+            
+            setSuccess(true); // Set success state to true
+            navigate('/'); // Navigate to dashboard on successful login
+        } else {
+            // Handle unsuccessful responses
+            console.error('Login failed:', response.data.message || 'Unknown error');
+            setError('Login failed. Please try again.'); // Set error state
+            setSuccess(false); // Set success state to false
         }
-      );
-      
-      if (response.status !== 200) {
-        throw new Error('Network response was not ok'); 
-      }
-      
-      setSuccess(true); // Set success state to true
-      navigate('/'); // Navigate to dashboard on successful login
     } catch (error) {
-      console.error('Error signing in with email and password:', error);
-      setError('Invalid email or password.'); // Set error state
-      setSuccess(false); // Set success state to false
+        console.error('Error signing in with email and password:', error);
+        setError('Invalid email or password.'); 
+        setSuccess(false); 
     }
   };
   

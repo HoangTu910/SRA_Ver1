@@ -1,11 +1,12 @@
 import PropTypes from 'prop-types';
-
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import { useTheme } from '@mui/material/styles';
 import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
 
 import { useResponsive } from '../../hooks/use-responsive';
 
@@ -18,31 +19,38 @@ import { NAV, HEADER } from './config-layout';
 import AccountPopover from './common/account-popover';
 import LanguagePopover from './common/language-popover';
 import NotificationsPopover from './common/notifications-popover';
-
+import InputWithButton from './common/add-device-form';
 // ----------------------------------------------------------------------
 
 export default function Header({ onOpenNav }) {
   const theme = useTheme();
 
   const lgUp = useResponsive('up', 'lg');
+  // const [isNavOpen, setIsNavOpen] = useState(true);
+  const [showForm, setShowForm] = useState(false);
 
+  const toggleForm = () => setShowForm(prev => !prev);
   const renderContent = (
     <>
-      {!lgUp && (
+      {(
         <IconButton onClick={onOpenNav} sx={{ mr: 1 }}>
           <Iconify icon="eva:menu-2-fill" />
         </IconButton>
       )}
 
       <Searchbar />
-
+      
       <Box sx={{ flexGrow: 1 }} />
-
+      <Button onClick={toggleForm}>
+        {showForm ? 'Close' : 'Add Device'}
+      </Button>
+      {showForm && <InputWithButton />} {/* Conditionally render the form */}
       <Stack direction="row" alignItems="center" spacing={1}>
-        <LanguagePopover />
+        {/* <LanguagePopover /> */}
         <NotificationsPopover />
         <AccountPopover />
       </Stack>
+      
     </>
   );
 

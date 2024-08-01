@@ -27,7 +27,7 @@ import navConfig from './config-navigation';
 
 export default function Nav({ openNav, onCloseNav }) {
   const pathname = usePathname();
-
+  
   const upLg = useResponsive('up', 'lg');
 
   useEffect(() => {
@@ -93,7 +93,8 @@ export default function Nav({ openNav, onCloseNav }) {
         },
       }}
     >
-      <Logo sx={{ mt: 3, ml: 4 }} />
+      <Button className="mt-3 ml-4" >chua biet de gi o day</Button>
+    
 
       {renderAccount}
 
@@ -101,7 +102,7 @@ export default function Nav({ openNav, onCloseNav }) {
 
       <Box sx={{ flexGrow: 1 }} />
 
-      {renderUpgrade}
+      {/* {renderUpgrade} */}
     </Scrollbar>
   );
 

@@ -29,7 +29,7 @@ export default function Main({ children, sx, ...other }) {
         }),
         ...sx,
       }}
-      {...other}
+      // {...other}
     >
       {children}
     </Box>
