@@ -66,26 +66,20 @@ class DeviceDataService {
 
   async getDataFromDatabase(userId) {
     try {
-      const batchSize = 1; // Number of documents to retrieve in each batch
-      const userDocRef = UserCollection.doc(userId); // Reference to the specific user document
-      const deviceDataCollection = userDocRef.collection('users'); // Reference to the subcollection within the user document
+      // Reference to the specific user document in the UserCollection
+      const userDocRef = UserCollection.doc(userId); 
   
-      let querySnapshot = await deviceDataCollection.limit(batchSize).get(); // Get the first batch
-      const results = []; // Array to store retrieved documents
+      // Fetch the user document
+      const doc = await userDocRef.get();
   
-      while (!querySnapshot.empty) {
-        querySnapshot.docs.forEach((doc) => {
-          results.push({ id: doc.id, ...doc.data() }); // Add document data to results array
-        });
-  
-        // Fetch the next batch of documents
-        querySnapshot = await deviceDataCollection
-          .limit(batchSize)
-          .startAfter(querySnapshot.docs[querySnapshot.docs.length - 1])
-          .get();
+      if (!doc.exists) {
+        console.log('No such document!');
+        return []; // or handle the case when no document is found
+      } else {
+        const data = doc.data();
+        console.log('Data user retrieved successfully:', data);
+        return [data]; // Wrap data in an array if expected format is an array
       }
-      console.log('Data retrieved successfully.');
-      return results; // Return the array of document data
     } catch (error) {
       console.error('Error retrieving data from Firestore:', error);
       throw error; // Rethrow error to be handled by the caller
@@ -124,32 +118,25 @@ class DeviceDataService {
     }
   };
 
-  async getDataSensorFromDatabase(deviceId){
+  async getDataSensorFromDatabase(deviceId) {
     try {
-      const batchSize = 1; // Number of documents to retrieve in each batch
-      const userDocRef = DeviceDataCollection.doc(deviceId); // Reference to the specific user document
-      const deviceDataCollection = userDocRef.collection('devices'); // Reference to the subcollection within the user document
+      // Reference to the specific device document
+      const deviceDocRef = DeviceDataCollection.doc(deviceId);
   
-      let querySnapshot = await deviceDataCollection.limit(batchSize).get(); // Get the first batch
-      const results = []; // Array to store retrieved documents
+      // Get the document data
+      const doc = await deviceDocRef.get();
   
-      while (!querySnapshot.empty) {
-        querySnapshot.docs.forEach((doc) => {
-          results.push({ id: doc.id, ...doc.data() }); // Add document data to results array
-        });
-  
-        // Fetch the next batch of documents
-        querySnapshot = await deviceDataCollection
-          .limit(batchSize)
-          .startAfter(querySnapshot.docs[querySnapshot.docs.length - 1])
-          .get();
+      if (!doc.exists) {
+        throw new Error('No such document!');
       }
-      console.log('Data retrieved successfully.');
-      return results; // Return the array of document data
+  
+      // Return the document data
+      console.log('Data Sensor retrieved successfully.');
+      return { id: doc.id, ...doc.data() };
     } catch (error) {
       console.error('Error retrieving data from Firestore:', error);
       throw error; // Rethrow error to be handled by the caller
     }
-  };
+  }
 }
 module.exports = new DeviceDataService()

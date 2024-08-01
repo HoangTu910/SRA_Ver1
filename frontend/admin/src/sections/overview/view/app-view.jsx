@@ -25,17 +25,23 @@ export default function AppView() {
   const [sensorData, setSensorData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  console.log("1111");
+  
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-
         var user = auth.currentUser;
         // console.log(user);
-        const userId = user.uid;
-        console.log("User ID: ", userId);
-        const deviceResponse = await axios.post('http://113.161.225.11:6969/api/devices/data', { userId });
+        const userUId = user.uid;
+        console.log("User ID: ", userUId);
+        console.log("1111");
+        const deviceResponse = await axios.post('http://113.161.225.11:6969/api/devices/data', { userId: userUId });
+        console.log("1111");
+        //fetch 
+
+        // console.log(response);
         const fetchedDeviceId = deviceResponse.data.deviceId;
+        console.log("Device Response: ", deviceResponse);
+
         if (!fetchedDeviceId) {
           throw new Error("Device ID not found in response");
         }

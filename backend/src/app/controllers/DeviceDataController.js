@@ -50,9 +50,18 @@ exports.deleteAllDataDeviceDocumentsController = async (req, res) => {
 exports.getDataFromDatabaseController = async (req, res) => {
   try {
     const { userId } = req.body;
+    console.log('Received userId:', userId); // Log the userId to verify it is being received correctly
+
     const deviceData = await getDataFromDatabase(userId);
-    res.json({ total: deviceData });
+    console.log('Fetched device data:', deviceData); // Log the entire fetched data to verify its structure
+
+    if (!deviceData || !deviceData.deviceId) {
+      return res.status(404).json({ message: 'Device not found' });
+    }
+
+    res.json({ deviceId: deviceData.deviceId });
   } catch (error) {
+    console.error('Error fetching data from database:', error);
     res.status(500).send('Server error');
   }
 };
