@@ -53,6 +53,13 @@ $ npm run dev
 
 **Pages Folder**: element_name in App.jsx depend on .jsx file in pages. If want to add new path, create new .jsx file and config html like login.jsx. If copy a template on Tailwind rememeber to rename the *function* and *export default*.
 
+### Server-side (Backend)
+In server of the system contain three main components: MQTT Broker, Socket and Backend (Data processing layer).
+
+**1. MQTT Broker**
+The reason of using custom MQTT Broker instead of public MQTT Broker is the custom broker provides faster response than public MQTT Broker. When using public MQTT Broker, every time device publish a topic, it took server about 20-30 second to subscribe to that topic. Custom broker can make the publish and subscribe between server and device instantly. Futhermore, custom MQTT Broker allow developer to config or set up authentication and encryption which make the data transfer securable. Aedes is used to build the custom MQTT Broker. 
+![ảnh](https://github.com/user-attachments/assets/06e2f276-8c04-4465-9975-caf9ac5d4b16)
+
 **Query?**:
 * Synchronize user Id and device ID in Database.
 * Old data of user? Queue [200] - Database update() or set()?
