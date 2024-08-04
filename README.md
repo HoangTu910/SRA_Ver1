@@ -72,6 +72,7 @@ The backend was built based on Nodejs express. The database used in the system i
 
 When start the backend it will connected to custom MQTT Broker by default username and password in backend server and subscribe to a topic on broker.
 
+![ảnh](https://github.com/user-attachments/assets/ca728bef-0499-481e-9106-b3f9ba61241e)
 
 **Authentication**: The backend handle the session of each user by verifying token. Make sure everytime user access to the dashboard, user need to login again to generate unique token.
 
