@@ -1,9 +1,22 @@
-# AIoT for Remote Healthcare System
+# AIoT for Remote Healthcare System (Update 04/08/2024)
+
+## General System
+
+### Overview
+Providing remote health monitoring solutions including multiple functions such as:
+* Monitor continously health indicators.
+* Using AI model to predict current health state of user.
+* Provides an interface to display health infomation.
+The system will focus on server management system, information security, optimize user interface and apply Artificial Intelligent. Implement basic device for collecting user data through sensor and process data in server.
 
 ## Phase 1 - Getting Started
 - **Literature Overview**: Determine which system is appropriate.
 - **System Design**: Start to implement the overview system.
 - **Firebase reseacrh**: Research how to use Firebase for authenticating and data management.
+- **Backend Technology**: Research multiple technology suitable for the system.
+
+## Overview System
+![ảnh](https://github.com/user-attachments/assets/441f1d63-33ae-4a7e-a6d3-49fcb573ed70)
 
 ### Firebase server setup
 
