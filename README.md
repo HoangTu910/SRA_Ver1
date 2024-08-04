@@ -70,7 +70,7 @@ The backend was built based on Nodejs express. The database used in the system i
 ![ảnh](https://github.com/user-attachments/assets/5782da00-5e08-45aa-b749-228d420e7780)
 ![ảnh](https://github.com/user-attachments/assets/09eeb00c-0d42-4433-b262-f3587d506a5c)
 
-When start the backend it will connected to custom MQTT Broker by default username and password in backend server and subscribe to a topic on broker.
+When start the backend, it will connect to custom MQTT Broker by default username and password setted up in backend server and subscribe to a topic on broker.
 
 ![ảnh](https://github.com/user-attachments/assets/ca728bef-0499-481e-9106-b3f9ba61241e)
 
