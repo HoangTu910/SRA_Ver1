@@ -74,7 +74,10 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 
 ![ảnh](https://github.com/user-attachments/assets/ca728bef-0499-481e-9106-b3f9ba61241e)
 
-**Authentication**: The backend handle the session of each user by verifying token. Make sure everytime user access to the dashboard, user need to login again to generate unique token.
+**Authentication**: The backend handle the session of each user by verifying token. Make sure everytime user access to the dashboard, user need to login again to generate unique token. The image below display the result after finished authentication for user. It generated a unique token for each session. The user ID was console log to verify if the user is correctly login.
+
+![ảnh](https://github.com/user-attachments/assets/2d2be85a-6d8b-4154-96b1-f8bf96f97c74)
+
 
 **Query?**:
 * Synchronize user Id and device ID in Database.
