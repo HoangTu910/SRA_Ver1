@@ -70,7 +70,7 @@ The backend was built based on Nodejs express. The database used in the system i
 ![ảnh](https://github.com/user-attachments/assets/5782da00-5e08-45aa-b749-228d420e7780)
 ![ảnh](https://github.com/user-attachments/assets/09eeb00c-0d42-4433-b262-f3587d506a5c)
 
-**Authentication**: The backend handle the session of each user by verifying token.  
+**Authentication**: The backend handle the session of each user by verifying token. Make sure everytime user access to the dashboard, user need to login again to generate unique token.
 
 **Query?**:
 * Synchronize user Id and device ID in Database.
