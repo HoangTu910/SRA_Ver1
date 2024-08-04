@@ -64,11 +64,14 @@ The reason of using custom MQTT Broker instead of public MQTT Broker is the cust
 
 **2. Backend Server**
 
-The backend was built based on Nodejs express. The database used in the system is Firebase. The reason why firebase because it suitable for a project, it provide 50000 times of write, 20000 times of read in database everyday (MongoDB allow 1M times but once). The backend system handle the authentication, communication with the MQTT Broker and data processing. There are two collections in the database, details will display below:
+The backend was built based on Nodejs express. The database used in the system is Firebase. The reason why firebase because it suitable for a project, it provide 50000 times of write, 20000 times of read in database everyday (MongoDB allow 1M times but once). The backend system handle the authentication, communication with the MQTT Broker and also it provide multiple API for data processing. There are two collections in the database, details will display below:
 
 ![ảnh](https://github.com/user-attachments/assets/9a000a74-dd6b-4cfa-8c45-8c5a2ac06df8)
 ![ảnh](https://github.com/user-attachments/assets/5782da00-5e08-45aa-b749-228d420e7780)
 ![ảnh](https://github.com/user-attachments/assets/09eeb00c-0d42-4433-b262-f3587d506a5c)
+
+When start the backend it will connected to custom MQTT Broker by default username and password in backend server and subscribe to a topic on broker.
+
 
 **Authentication**: The backend handle the session of each user by verifying token. Make sure everytime user access to the dashboard, user need to login again to generate unique token.
 
