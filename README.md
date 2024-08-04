@@ -15,7 +15,8 @@ The system will focus on server management system, information security, optimiz
 - **Firebase reseacrh**: Research how to use Firebase for authenticating and data management.
 - **Backend Technology**: Research multiple technology suitable for the system.
 
-## Overview System
+## System Design
+The overview of the system display below. Each part in the system will have it specific design (will be explained detail in other part). 
 ![ảnh](https://github.com/user-attachments/assets/441f1d63-33ae-4a7e-a6d3-49fcb573ed70)
 
 ### Firebase server setup
@@ -29,8 +30,16 @@ $ node_modules/.bin/webpack
 $ serve -n dist/
 ```
 
-### Frontend setup (React + Vite + Tailwind)
-Modify only App.jsx and pages folder when working with frontend
+### User Interface (Front-end)
+The front-end including a single dashboard display current data in realtime. Also it contain some charts and prediction zone for AI implementation. Until now, there two main UI used in the system (Login Page and Dashboard). 
+Technology used for front-end:
+* ReactJS.
+* Tailwind CSS.
+* Material UI.
+The overview front-end display below:
+![ảnh](https://github.com/user-attachments/assets/6aea23cb-41c5-40ff-b792-343b6f47f0cc)
+![ảnh](https://github.com/user-attachments/assets/546b5479-fe2b-45f9-bdf2-b949f7aa3fc4)
+
 1. Install dependencies
 ```bash
 $ npm i name_package
