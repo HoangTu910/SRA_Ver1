@@ -56,7 +56,7 @@ $ npm run dev
 ### Server-side (Backend)
 In server of the system contain three main components: MQTT Broker, Socket and Backend (Data processing layer).
 
-**1. MQTT Broker**
+**1. MQTT Broker**:
 The reason of using custom MQTT Broker instead of public MQTT Broker is the custom broker provides faster response than public MQTT Broker. When using public MQTT Broker, every time device publish a topic, it took server about 20-30 second to subscribe to that topic. Custom broker can make the publish and subscribe between server and device instantly. Futhermore, custom MQTT Broker allow developer to config or set up authentication and encryption which make the data transfer securable. Aedes is used to build the custom MQTT Broker. 
 ![ảnh](https://github.com/user-attachments/assets/06e2f276-8c04-4465-9975-caf9ac5d4b16)
 
