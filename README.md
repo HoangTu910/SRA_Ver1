@@ -85,8 +85,11 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 * Doctor feature.
 * Developer or User.
 ### Encryption process:
-**ESP32 Gateway sending**
+**ESP32 Gateway sent**
 ![ảnh](https://github.com/user-attachments/assets/ef342b40-f8d5-49f8-afbb-8f45a81b7112)
+**Server received**
+![ảnh](https://github.com/user-attachments/assets/0fa112bf-3db0-422f-9459-79d2eb32043c)
+
 
 
 
