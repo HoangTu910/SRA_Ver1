@@ -80,10 +80,15 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 
 
 **Query?**:
-* Synchronize user Id and device ID in Database.
-* Old data of user? Queue [200] - Database update() or set()?
-* Doctor feature.
-* Developer or User.
+* Synchronize user Id and device ID in Database (Finished).
+* Old data of user? Queue [200] - Database update() or set() (update currently)?
+* Doctor feature (Yet).
+* Developer or User (User).
+* What is synchronize between Device and Server ?
+* Reconstruct the frame protocol? JSON or transfer frame directly to server (if yes how? because the frame is too large to handle).
+* Encryption implementation in server side.
+* Dockerize the whole project (created into 4 seperate folder so don't know how to run it the same time).
+* Project structure.
 ### Encryption process:
 **ESP32 Gateway sent**
 ![ảnh](https://github.com/user-attachments/assets/68cf7617-6ed2-445e-90b7-a91cf55cd861)
