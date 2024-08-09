@@ -84,6 +84,10 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 * Old data of user? Queue [200] - Database update() or set()?
 * Doctor feature.
 * Developer or User.
+### Encryption process:
+**ESP32 Gateway sending**
+![ảnh](https://github.com/user-attachments/assets/ef342b40-f8d5-49f8-afbb-8f45a81b7112)
+
 
 
   
