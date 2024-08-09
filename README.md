@@ -89,6 +89,7 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 * Reconstruct the frame protocol? JSON or transfer frame directly to server (if yes how? because the frame is too large to handle).
 * Encryption implementation in server side.
 * Dockerize the whole project (created into 4 seperate folder so don't know how to run it the same time).
+* Some handling function in frame construct and parsing process.
 * Project structure.
 ### Encryption process:
 **ESP32 Gateway sent**
