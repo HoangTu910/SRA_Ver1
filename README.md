@@ -86,9 +86,10 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 * Developer or User.
 ### Encryption process:
 **ESP32 Gateway sent**
-![ảnh](https://github.com/user-attachments/assets/ef342b40-f8d5-49f8-afbb-8f45a81b7112)
+![ảnh](https://github.com/user-attachments/assets/68cf7617-6ed2-445e-90b7-a91cf55cd861)
 **Server received**
-![ảnh](https://github.com/user-attachments/assets/0fa112bf-3db0-422f-9459-79d2eb32043c)
+![ảnh](https://github.com/user-attachments/assets/3b32e905-cde8-4126-ba09-be1d982466f1)
+
 
 
 
