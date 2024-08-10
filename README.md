@@ -88,6 +88,7 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 --------------------------------------------------
 * What is synchronize between Device and Server ?
 * ACK (Handshaking).
+* https://nodejs.org/api/child_process.html - NodeJS Child Process
 * https://en.wikipedia.org/wiki/Ascon_(cipher)
 * Reconstruct the frame protocol? JSON or transfer frame directly to server (if yes how? because the frame is too large to handle).
 * Encryption implementation in server side.
