@@ -84,6 +84,7 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 * Old data of user? Queue [200] - Database update() or set() (update currently)?
 * Doctor feature (Yet).
 * Developer or User (User).
+* Time series database.
 --------------------------------------------------
 * What is synchronize between Device and Server ?
 * Reconstruct the frame protocol? JSON or transfer frame directly to server (if yes how? because the frame is too large to handle).
