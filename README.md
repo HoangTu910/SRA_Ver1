@@ -102,6 +102,9 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 ![ảnh](https://github.com/user-attachments/assets/3b32e905-cde8-4126-ba09-be1d982466f1)
 
 
+## Ascon Cryptography (Ascon128a AEAD)
+
+
 
 
 
