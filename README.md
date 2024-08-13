@@ -103,6 +103,33 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 
 
 ## Ascon Cryptography (Ascon-128a AEAD)
+*Source: https://github.com/ascon/ascon-c*
+### Ascon-128a AEAD structure
+![ảnh](https://github.com/user-attachments/assets/4719acd8-beeb-45bc-a3be-caf25a9fbd5f)
+1. Key: 128-bit
+2. Nonce: 128-bit
+3. Tag: 128-bit
+4. Asscociated Data: Optional
+5. Plaintext: Data need to be encrypted
+6. Ciphertext: Encrypted data
+
+### Encrypt Process
+**1. Initialization**
+* Load key and nonce into internal register of Ascon (State Register) and inform the initilization state
+![ảnh](https://github.com/user-attachments/assets/eaa189d2-a8fa-4c19-8643-4f156b5271a4)
+
+**2. Process Association Data**
+* The Association Data (AD) will be processed through multiple transformation (ascon_duplex()). After the process, a simple XOR operation will be use to prepare for the plaintext processing.
+![ảnh](https://github.com/user-attachments/assets/2ed2b416-80ad-4646-bd9f-2253bd5d8975)
+
+**3. Encryption**
+* Plaintext will be XOR with the internal state to generate the ciphertext. Everytime it process a block, the internal state will be updated through some non-linear transformation.
+
+**4. Finalization**
+* The secret key will be XOR with internal state to make sure if any change in encryption process occur, it will affect to the final result. Finally, a 128-bit tag will be generated. The tag will be sent along with ciphertext to make sure data does not change in transmission process.
+
+
+
 
 
 
