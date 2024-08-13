@@ -104,6 +104,7 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 
 ## Ascon Cryptography (Ascon-128a AEAD)
 *Source: https://github.com/ascon/ascon-c*
+
 *Comparision with Chacha20-poly1305: https://crypto.stackexchange.com/questions/89990/nist-lwc-finalists-aead-vs-chacha20-poly1305*
 
 ![ảnh](https://github.com/user-attachments/assets/69a8b46a-7f7c-4b1e-abc1-aa1a87c6eb3d)
