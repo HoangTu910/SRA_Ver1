@@ -140,6 +140,11 @@ Update ACK for three-way handshake and device ID data type.
 
 ![ảnh](https://github.com/user-attachments/assets/b21512be-00a7-4fd9-9a1d-7f83bff4c35a)
 
+* Three-way handshake implemetation between ESP32 and STM32 (without frame)
+
+![ảnh](https://github.com/user-attachments/assets/e352bdd8-1b0d-47cb-9859-8346eacf3096)
+
+
 
 
 
