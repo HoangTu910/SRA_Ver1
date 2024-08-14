@@ -1,38 +1,63 @@
-// #include "handshake.h"
+#include "handshake.h"
 
-// uint8_t receivePacket(uint8_t expectedData, uint32_t timeout){
-//     Serial1.begin(115200, SERIAL_8N1, 16, 17);
-//     unsigned long startTime = millis();
-//     while (millis() - startTime < timeout) {
-//         if (Serial1.available() > 0) {
-//             uint8_t receivedData = Serial.read();
-//             if (receivedData == expectedData) {
-//                 return true; 
-//             }
-//         }
-//     }
-//     return false; 
-// }
+ThreeWayHandshake::ThreeWayHandshake(HardwareSerial &serialPort, uint32_t timeoutDuration)
+    : serial(serialPort), timeout(timeoutDuration) {}
 
-// uint8_t receiveThreeWayHandshake(){
-//     if (!receivePacket(COMMAND_SYN, TIME_OUT)) {
-//         Serial.println("Failed to received (Handshake step 1)");
-//         return 0; 
-//     }
-//     Serial.print("Received packet [");
-//     Serial.print(COMMAND_SYN);
-//     Serial.println("]");
+bool ThreeWayHandshake::receivePacket(uint8_t expectedData) {
+    unsigned long startTime = millis();
+    while (millis() - startTime < timeout) {
+        if (serial.available() > 0) {
+            uint8_t receivedData = serial.read();
+            if (receivedData == expectedData) {
+                Serial.print("Received Correct Packet: ");
+                Serial.println(receivedData);
+                return true;
+            } else {
+                Serial.print("Received Wrong Packet: ");
+                Serial.println(receivedData);
+            }
+        }
+        delay(10);
+    }
+    return false;
+}
 
-//     Serial.write(COMMAND_SYN_ACK); //send acknowledment
-//     Serial.print("Send accept packet [");
-//     Serial.print(COMMAND_SYN_ACK);
-//     Serial.println("]");
+void ThreeWayHandshake::clearUartBuffer() {
+    while (serial.available() > 0) {
+        serial.read(); // Read and discard data
+    }
+}
 
-//     if (!receivePacket(COMMAND_ACK, TIME_OUT)) {
-//         Serial.println("Failed to received (Handshake step 3)");
-//         return 0; 
-//     }
+bool ThreeWayHandshake::performHandshake(uint8_t commandSyn, uint8_t commandSynAck, uint8_t commandAck) {
+    clearUartBuffer();
+    if (!receivePacket(commandSyn)) {
+        Serial.println("Failed to receive (Handshake step 1)");
+        return false;
+    }
+    Serial.print("Received packet [");
+    Serial.print(commandSyn);
+    Serial.println("]");
 
-//     Serial.println("Three way handshake success!");
-//     return 1; 
-// }
+    serial.write(commandSynAck); // Send acknowledgment
+    serial.flush();
+    Serial.print("Sent acknowledgment [");
+    Serial.print(commandSynAck);
+    Serial.println("]");
+
+    clearUartBuffer();
+    unsigned long startTime = millis();
+    bool state = false;
+    Serial.println("Receiving final packet...");
+    while (millis() - startTime < timeout) {
+        state = receivePacket(commandAck);
+        if (state) break;
+    }
+
+    if (state) {
+        Serial.println("Three-way handshake success!");
+        return true;
+    } else {
+        Serial.println("Unable to receive final packet!");
+        return false;
+    }
+}
