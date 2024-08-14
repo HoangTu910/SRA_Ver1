@@ -87,7 +87,7 @@ uint8_t receivePacket(uint8_t expectedData, uint32_t timeout) {
             uint8_t receivedData = Serial1.read();
             if (receivedData == expectedData) {
                 Serial.print("Receive Correct Packet: ");
-                Serial.println(receivedData, HEX);
+                Serial.println(receivedData);
                 return true; 
             }
             else{
