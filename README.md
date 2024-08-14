@@ -137,6 +137,7 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 
 ### Structure
 Update ACK for three-way handshake and device ID data type.
+
 ![ảnh](https://github.com/user-attachments/assets/b21512be-00a7-4fd9-9a1d-7f83bff4c35a)
 
 
