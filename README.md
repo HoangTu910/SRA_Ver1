@@ -133,6 +133,11 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 **4. Finalization**
 * The secret key will be XOR with internal state to make sure if any change in encryption process occur, it will affect to the final result. Finally, a 128-bit tag will be generated. The tag will be sent along with ciphertext to make sure data does not change in transmission process.
 
+## Frame Structure
+
+### Structure
+Update ACK for three-way handshake and device ID data type.
+![ảnh](https://github.com/user-attachments/assets/b21512be-00a7-4fd9-9a1d-7f83bff4c35a)
 
 
 
