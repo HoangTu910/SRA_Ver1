@@ -93,3 +93,98 @@ int parse_frame(uint8_t *received_data, size_t length)
     Serial.println(frame->t2);
     return 0;  // Success
 }
+
+uint8_t transitionFrame(Frame_t *frame, Encrypt_Frame_t *en_frame)
+{
+    frame->h1 = en_frame->h1;
+    frame->h2 = en_frame->h2;
+    frame->crc = en_frame->crc;
+    frame->t1 = en_frame->t1;
+    frame->t2 = en_frame->t2;
+}
+
+int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame)
+{
+    unsigned char *dataPacket = (unsigned char *)&frame->dataPacket;
+    Serial.print("Data Log: ");
+    for (size_t i = 0; i < sizeof(frame->dataPacket); i++) {
+        Serial.print(dataPacket[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
+
+    size_t dataPacketLen = sizeof(frame->dataPacket);
+    unsigned char ciphertext[dataPacketLen + CRYPTO_ABYTES];  
+    unsigned long long ciphertextLen;
+    const unsigned char key[16] = ASCON_KEY; 
+    unsigned char nonce[16]; 
+    generate_nonce(nonce);  
+    const unsigned char assoc_data[] = "Metadata";
+
+    // Encrypt the data
+    int ret = crypto_aead_encrypt(ciphertext, &ciphertextLen, dataPacket, dataPacketLen,
+                                 assoc_data, strlen((char *)assoc_data),
+                                 NULL, nonce, key);
+    if (ret != 0) {
+        Serial.println("Encryption failed!");
+        return ret;
+    }
+
+    Serial.print("Encrypted Data: ");
+    for (size_t i = 0; i < ciphertextLen; i++) {
+        Serial.print(ciphertext[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
+    
+    memcpy(en_frame->dataEncrypted, ciphertext, ciphertextLen);
+
+    unsigned char decryptedtext[255];  
+    unsigned long long decrypted_len = 0;
+
+    int decrypt_ret = crypto_aead_decrypt(decryptedtext, &decrypted_len, NULL, en_frame->dataEncrypted, ciphertextLen, 
+                                          assoc_data, strlen((char *)assoc_data), 
+                                          nonce, key);
+    if (decrypt_ret == 0) {
+        if (decrypted_len < sizeof(decryptedtext)) {
+            decryptedtext[decrypted_len] = '\0';
+        }
+        
+        Serial.print("Decrypted text: ");
+        for (unsigned long long i = 0; i < decrypted_len; i++) {
+            Serial.print(decryptedtext[i], HEX);
+            Serial.print(" ");
+        }
+        Serial.println();
+    } else {
+        Serial.println("Decryption failed!");
+    }
+
+    return 1;  
+}
+
+
+int decryptDataPacket(Encrypt_Frame_t* en_frame){
+    const unsigned char key[16] = ASCON_KEY;  // 128-bit key
+    unsigned char nonce[16]; generate_nonce(nonce);
+    const unsigned char assoc_data[] = "Metadata"; // Optional
+    unsigned long long clen = 116;
+    unsigned long long decrypted_len = 0;
+    unsigned char decryptedtext[100];
+    if (crypto_aead_decrypt(decryptedtext, &decrypted_len, NULL, en_frame->dataEncrypted, clen, 
+                            assoc_data, strlen((char *)assoc_data), 
+                            nonce, key) == 0) {
+        if (decrypted_len < sizeof(decryptedtext)) {
+            decryptedtext[decrypted_len] = '\0';
+        }
+        
+        Serial.print("Decrypted text: ");
+        for (unsigned long long i = 0; i < decrypted_len; i++) {
+            Serial.print(decryptedtext[i], HEX);
+        }
+        Serial.println();
+    } else {
+        Serial.println("Decryption failed!");
+    }
+    return 0;
+}

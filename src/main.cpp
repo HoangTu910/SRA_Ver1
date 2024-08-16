@@ -76,6 +76,7 @@ void setup() {
 
 void loop() {
     Frame_t received_frame;
+    Encrypt_Frame_t encrypted_frame;
     Serial.println("----------Three way handshake---------");
     if (handshake.performHandshake(COMMAND_SYN, COMMAND_SYN_ACK, COMMAND_ACK)) {
         Serial.println("Handshake completed successfully!");
@@ -92,6 +93,23 @@ void loop() {
                 Serial.println(result);
             }
         }
+
+        transitionFrame(&received_frame, &encrypted_frame);
+
+        int result = encryptDataPacket(&received_frame, &encrypted_frame);
+        if (result != 1) {
+            Serial.println("Encryption failed");
+        } else {
+            Serial.println("Encryption successful");
+        }
+
+        // Serial.print("Log Check: ");
+        // for(int i = 0; i < 116; i++){
+        //     Serial.print(encrypted_frame.dataEncrypted[i], HEX);
+        //     Serial.print(" ");
+        // }
+        // Serial.println();
+
     } else {
         Serial.println("Handshake failed.");
     }
