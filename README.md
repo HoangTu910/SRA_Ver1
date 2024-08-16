@@ -144,6 +144,11 @@ Update ACK for three-way handshake and device ID data type.
 
 ![ảnh](https://github.com/user-attachments/assets/e352bdd8-1b0d-47cb-9859-8346eacf3096)
 
+### Encrypt data packet
+
+![ảnh](https://github.com/user-attachments/assets/d8da38c0-ede3-4352-9b54-6a1459b6dace)
+
+
 
 
 
