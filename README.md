@@ -145,7 +145,12 @@ Update ACK for three-way handshake and device ID data type.
 ![ảnh](https://github.com/user-attachments/assets/e352bdd8-1b0d-47cb-9859-8346eacf3096)
 
 ### Combined with frame (parsing from ESP32 - without encrytion)
+
 ![ảnh](https://github.com/user-attachments/assets/1df86a02-79fe-4b70-b8d3-85bf4ce90566)
+
+### Encrypt data packet
+
+![ảnh](https://github.com/user-attachments/assets/d8da38c0-ede3-4352-9b54-6a1459b6dace)
 
 
 
