@@ -8,7 +8,11 @@ bool ThreeWayHandshake::receivePacket(uint8_t expectedData) {
     while (millis() - startTime < timeout) {
         if (serial.available() > 0) {
             uint8_t receivedData = serial.read();
-            if (receivedData == expectedData) {
+            if(receivedData == 255){
+                Serial.print("Error transmit: ");
+                Serial.println(receivedData);
+            }
+            else if (receivedData == expectedData) {
                 Serial.print("Received Correct Packet: ");
                 Serial.println(receivedData);
                 return true;

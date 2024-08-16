@@ -3,6 +3,7 @@
 #include "decrypt.h"
 #include "constants.h"
 #include "handshake.h"
+#include "frameparsing.h"
 #include <stdio.h>
 #include <string.h>
 #include <Arduino.h>
@@ -66,87 +67,33 @@ void test_ascon_encryption_decryption() {
 ThreeWayHandshake handshake(Serial1, 5000);
 
 void setup() {
-    Serial.begin(9600);  // Initialize UART for debugging
+    Serial.begin(9600);  
     Serial1.begin(115200, SERIAL_8N1, 16, 17); // Initialize UART1 with TX=16, RX=17
     Serial.println("ESP32 UART Receiver Initialized");
-    // Uncomment to test encryption/decryption if needed
+    
     // test_ascon_encryption_decryption();
 }
 
 void loop() {
-    // Run the three-way handshake continuously
-    // if (receiveThreeWayHandshake()) {
-    //     Serial.println("Handshake succeeded!");
-    // } else {
-    //     Serial.println("Handshake failed. Retrying...");
-    // }
-
+    Frame_t received_frame;
+    Serial.println("----------Three way handshake---------");
     if (handshake.performHandshake(COMMAND_SYN, COMMAND_SYN_ACK, COMMAND_ACK)) {
         Serial.println("Handshake completed successfully!");
+        Serial.println("Starting parsing frame...");
+        Serial.println("----------Received Frame---------");
+        if (Serial1.available() >= sizeof(Frame_t)) {
+            // Read frame data from UART
+            Serial1.readBytes((uint8_t*)&received_frame, sizeof(received_frame));
+
+            int result = parse_frame((uint8_t*)&received_frame, sizeof(received_frame));
+
+            if (result != 0) {
+                Serial.print("Failed to parse frame, error code: ");
+                Serial.println(result);
+            }
+        }
     } else {
         Serial.println("Handshake failed.");
     }
 }
-
-// uint8_t receivePacket(uint8_t expectedData, uint32_t timeout) {
-//     unsigned long startTime = millis();
-//     while (millis() - startTime < timeout) {
-//         if (Serial1.available() > 0) {
-//             uint8_t receivedData = Serial1.read();
-//             if (receivedData == expectedData) {
-//                 Serial.print("Receive Correct Packet: ");
-//                 Serial.println(receivedData);
-//                 return true; 
-//             }
-//             else{
-//                 Serial.print("Receive Wrong Packet: ");
-//                 Serial.println(receivedData);
-//             }
-//         }
-//         delay(10);
-//     }
-//     return false; 
-// }
-
-// void clearUartBuffer() {
-//     while (Serial1.available() > 0) {
-//         Serial1.read(); // Read and discard data
-//     }
-// }
-
-// uint8_t receiveThreeWayHandshake() {
-//     clearUartBuffer(); 
-//     if (!receivePacket(COMMAND_SYN, TIME_OUT)) {
-//         Serial.println("Failed to receive (Handshake step 1)");
-//         return 0; 
-//     }
-//     Serial.print("Received packet [");
-//     Serial.print(COMMAND_SYN);
-//     Serial.println("]");
-
-//     Serial1.write(COMMAND_SYN_ACK); // Send acknowledgment
-//     Serial1.flush();
-//     Serial.print("Sent acknowledgment [");
-//     Serial.print(COMMAND_SYN_ACK);
-//     Serial.println("]");
-
-//     clearUartBuffer(); 
-//     unsigned long startTime = millis();
-//     uint8_t state;
-//     Serial.println("Receiving final packet...");
-//     while (millis() - startTime < TIME_OUT){
-//         state = receivePacket(COMMAND_ACK, TIME_OUT);
-//         if(state) break;
-//     }
-
-//     if(state) {
-//         Serial.println("Three-way handshake success!");
-//         return 1;    
-//     }
-//     else {
-//         Serial.println("Unable to receive final packet!");
-//         return 0;
-//     }
-//     return 1; 
-// }
 
