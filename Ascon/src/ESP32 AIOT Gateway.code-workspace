@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "../../ESP32 AIOT Gateway"
+		},
+		{
+			"name": "Ascon",
+			"path": ".."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"encrypt.h": "c",
+			"core.h": "c"
+		}
+	}
+}
