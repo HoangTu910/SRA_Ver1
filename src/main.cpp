@@ -4,9 +4,11 @@
 #include "constants.h"
 #include "handshake.h"
 #include "frameparsing.h"
+#include "gateway.h"
 #include <stdio.h>
 #include <string.h>
 #include <Arduino.h>
+#include <PubSubClient.h>
 
 void test_ascon_encryption_decryption() {
     const unsigned char plaintext[] = "Encrypt Data 9999";
@@ -68,13 +70,16 @@ ThreeWayHandshake handshake(Serial1, 5000);
 
 void setup() {
     Serial.begin(9600);  
+    setup_wifi();
+    client.setServer(mqtt_server, mqtt_port);
+    client.setCallback(callback);
     Serial1.begin(115200, SERIAL_8N1, 16, 17); // Initialize UART1 with TX=16, RX=17
     Serial.println("ESP32 UART Receiver Initialized");
-    
     // test_ascon_encryption_decryption();
 }
 
 void loop() {
+    mqtt_setup();
     Frame_t received_frame;
     Encrypt_Frame_t encrypted_frame;
     Serial.println("----------Three way handshake---------");
@@ -102,16 +107,10 @@ void loop() {
         } else {
             Serial.println("Encryption successful");
         }
-
-        // Serial.print("Log Check: ");
-        // for(int i = 0; i < 116; i++){
-        //     Serial.print(encrypted_frame.dataEncrypted[i], HEX);
-        //     Serial.print(" ");
-        // }
-        // Serial.println();
-
     } else {
         Serial.println("Handshake failed.");
     }
+    
+    
 }
 
