@@ -50,9 +50,15 @@ const loginUser = async (idToken) => {
 };
 
 
-const logout = async () => {
-    await auth.signOut();
+const logout = async (uid) => {
+    try {
+        // await auth.revokeRefreshTokens(uid);
     console.log('User logged out successfully.');
+    } catch (error) {
+        console.error('Error logout ID token:', error.message);
+        throw new Error('Error logout ID token: ' + error.message);
+    }
+    
 };
 
 module.exports = {signUpUser, loginUser};

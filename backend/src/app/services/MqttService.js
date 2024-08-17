@@ -1,8 +1,9 @@
+
 const mqtt = require('mqtt');
 const DeviceDataService = require('./DeviceDataService');
 
 const brokerUrl = 'mqtt://localhost:1883';
-const topic = 'sensor/hoanghuutu';
+const topic = 'sensors/data';
 
 let client;
 
@@ -32,7 +33,10 @@ function initMQTT() {
         const startTime = Date.now();
         console.log(`Raw ${topic}:`, message.toString());
         try {
+            const topicParts = topic.split('/');
+            const deviceId = topicParts[1];
             const data = JSON.parse(message.toString());
+
             console.log('Data: ', data);
             console.log(`Received data on topic ${topic}:`);
             console.log(`Heart Rate: ${data.heart_rate}`);
@@ -41,7 +45,7 @@ function initMQTT() {
             console.log(`Device ID: ${data.id_device.toString()}`);
 
             // Write data to Firestore
-            await DeviceDataService.createDeviceData(data, data.id_device);
+            await DeviceDataService.createDeviceData(data, deviceId);
             const endTime = Date.now();
             console.log(`Processed message in ${endTime - startTime}ms`);
         } catch (e) {

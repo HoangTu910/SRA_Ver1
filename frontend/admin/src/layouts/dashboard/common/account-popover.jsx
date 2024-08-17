@@ -8,8 +8,10 @@ import { alpha } from '@mui/material/styles';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-
+import { useNavigate } from 'react-router-dom';
+import { auth } from '../../../config/firebase'
 import { account } from '../../../_mock/account';
+import axios from 'axios';
 
 // ----------------------------------------------------------------------
 
@@ -32,12 +34,24 @@ const MENU_OPTIONS = [
 
 export default function AccountPopover() {
   const [open, setOpen] = useState(null);
-
+  const navigate = useNavigate();
   const handleOpen = (event) => {
     setOpen(event.currentTarget);
   };
 
   const handleClose = () => {
+    setOpen(null);
+  };
+  const handleLogout = async () => {
+    try {
+      const uid = auth.currentUser.uid;
+      // console.log(uid);
+      auth.signOut();
+      console.log('Logout successfully!');
+      navigate('/login');
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
     setOpen(null);
   };
 
@@ -105,7 +119,7 @@ export default function AccountPopover() {
         <MenuItem
           disableRipple
           disableTouchRipple
-          onClick={handleClose}
+          onClick={handleLogout}
           sx={{ typography: 'body2', color: 'error.main', py: 1.5 }}
         >
           Logout

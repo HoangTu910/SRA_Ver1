@@ -14,6 +14,7 @@ router.post('/userupload', DeviceDataController.uploadIDDeviceForUserController)
 router.post('/create', DeviceDataController.createDeviceDataController);
 router.post('/data', DeviceDataController.getDataFromDatabaseController);
 router.post('/datasensor', DeviceDataController.getDataSensorFromDatabaseController);
+router.post('/realtime', DeviceDataController.getRealTimeDataController);
 router.delete('/delete', deleteAllDataDeviceDocumentsController);
 router.delete('/:id', deleteHeartrateByIdController);
 router.delete('/condition', deleteHeartrateByConditionController);

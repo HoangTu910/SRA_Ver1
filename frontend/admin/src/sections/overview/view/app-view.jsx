@@ -16,18 +16,80 @@ import AppWidgetSummary from '../app-widget-summary';
 import AppTrafficBySite from '../app-traffic-by-site';
 import AppCurrentSubject from '../app-current-subject';
 import AppConversionRates from '../app-conversion-rates';
+import { any } from 'prop-types';
 
 // ----------------------------------------------------------------------
 
 export default function AppView() {
-  const [deviceId, setDeviceId] = useState(null);
+  // const [deviceId, setDeviceId] = useState(null);
+  // const [metrics, setMetrics] = useState({ heart_rate: null, spO2: null, temperature: null });
+  // const [sensorData, setSensorData] = useState(null);
+  // const [loading, setLoading] = useState(true);
+  // const [error, setError] = useState("");
+  
+  // useEffect(() => {
+  //   const fetchMetrics = async () => {
+  //     try {
+  //       const user = auth.currentUser;
+  //       if (!user) {
+  //         throw new Error('User not authenticated');
+  //       }
+  
+  //       const userUId = user.uid;
+  //       console.log("User ID: ", userUId);
+  
+  //       // Fetch device data
+  //       const deviceResponse = await axios.post('http://113.161.225.11:6969/api/devices/data', { userId: userUId });
+  //       console.log("Device Response: ", deviceResponse.data);
+  
+  //       // Ensure device data is available
+  //       if (!deviceResponse.data || !Array.isArray(deviceResponse.data.deviceData) || deviceResponse.data.deviceData.length === 0) {
+  //         throw new Error('No device data available');
+  //       }
+  
+  //       // Extract deviceId from response
+  //       const fetchedDeviceId = deviceResponse.data.deviceData[0]?.deviceId;
+  //       if (!fetchedDeviceId) {
+  //         throw new Error("Device ID not found in response");
+  //       }
+  
+  //       console.log("Fetched Device ID:", fetchedDeviceId);
+  //       setDeviceId(fetchedDeviceId);
+  
+  //       // Fetch sensor data
+  //       const sensorResponse = await axios.post('http://113.161.225.11:6969/api/devices/datasensor', { deviceId: fetchedDeviceId });
+  //       console.log("Sensor Response: ", sensorResponse.data.total);
+  
+  //       // Update  metrics state with fetched sensor data
+  //       const { heart_rate, spO2, temperature } = sensorResponse.data.total;
+  
+  //       setMetrics({
+  //         heart_rate: Number(heart_rate),
+  //         spO2: Number(spO2),
+  //         temperature: Number(temperature)
+  //       });
+  //       setSensorData(sensorResponse.data);
+  
+  //       console.log("Metrics: ", metrics);
+  //     } catch (err) {
+  //       console.error('Error fetching metrics data:', err);
+  //       setError('Failed to load data');
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  
+  //   fetchMetrics();
+  //   const intervalId = setInterval(fetchMetrics, 2000); // Fetch data every 5 seconds
+
+  //   return () => clearInterval(intervalId);
+  // }, []);
   const [metrics, setMetrics] = useState({ heart_rate: null, spO2: null, temperature: null });
-  const [sensorData, setSensorData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  
+  const [heartRateQueue, setHeartRateQueue] = useState([0]);
   useEffect(() => {
-    const fetchMetrics = async () => {
+    const fetchDataAndSetupWebSocket = async () => {
       try {
         const user = auth.currentUser;
         if (!user) {
@@ -41,7 +103,6 @@ export default function AppView() {
         const deviceResponse = await axios.post('http://113.161.225.11:6969/api/devices/data', { userId: userUId });
         console.log("Device Response: ", deviceResponse.data);
 
-        // Ensure device data is available
         if (!deviceResponse.data || !Array.isArray(deviceResponse.data.deviceData) || deviceResponse.data.deviceData.length === 0) {
           throw new Error('No device data available');
         }
@@ -53,31 +114,68 @@ export default function AppView() {
         }
 
         console.log("Fetched Device ID:", fetchedDeviceId);
-        setDeviceId(fetchedDeviceId);
 
-        // Fetch sensor data
-        const sensorResponse = await axios.post('http://113.161.225.11:6969/api/devices/datasensor', { deviceId: fetchedDeviceId });
-        console.log("Sensor Response: ", sensorResponse.data);
+        // Set up WebSocket connection
+        const socket = new WebSocket('ws://113.161.225.11:8989');
 
-        // Update metrics state with fetched sensor data
-        const { heart_rate, spO2, temperature } = sensorResponse.data.total;
-        setMetrics({
-          heart_rate: Number(heart_rate),
-          spO2: Number(spO2),
-          temperature: Number(temperature)
-        });
-        setSensorData(sensorResponse.data);
-        console.log("Metrics: ", metrics);
+        socket.onopen = () => {
+          console.log('WebSocket connection opened');
+          socket.send(JSON.stringify({ type: 'register', deviceId: fetchedDeviceId }));
+        };
+
+        socket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          console.log('Received data:', data);
+          setMetrics({
+            heart_rate: data.heart_rate,
+            spO2: data.spO2,
+            temperature: data.temperature
+          });
+
+          // Update heart rate queue
+          const newqueue = heartRateQueue;
+          if(newqueue.length >= 11)
+              newqueue.shift();
+          newqueue.push(data.heart_rate);
+          console.log(newqueue);
+          setHeartRateQueue(newqueue);
+          console.log(heartRateQueue);
+          // ApexCharts(document.querySelector("#chart"), chartOptions).;
+          // setHeartRateQueue(newq => {
+          //   // const newQueue = [heartRateQueue, data.heart_rate];
+          //   if (newq.length >= 10) {
+          //     newq.shift(); // Remove the oldest value if the queue exceeds 10
+          //   }
+          //   newq.push(data.heart_rate);
+          //   return newq;
+          // });
+          setLoading(false);
+        };
+
+        socket.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          setError('Failed to receive data');
+          setLoading(false);
+        };
+
+        socket.onclose = () => {
+          console.log('WebSocket connection closed');
+        };
+
+        // Cleanup on component unmount
+        return () => {
+          socket.close();
+        };
+        
       } catch (err) {
-        console.error('Error fetching metrics data:', err);
+        console.error('Error:', err);
         setError('Failed to load data');
-      } finally {
         setLoading(false);
       }
     };
 
-    fetchMetrics();
-  }, []);
+    fetchDataAndSetupWebSocket();
+  }, []); // Empty dependency array to run once on mount
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
@@ -144,7 +242,7 @@ export default function AppView() {
           />
         </Grid>
 
-        <Grid xs={12} md={6} lg={8}>
+        <Grid xs={12} md={6} lg={8} id = "chartt">
           <AppWebsiteVisits
             sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Data Record"
@@ -166,9 +264,9 @@ export default function AppView() {
               series: [
                 {
                   name: 'Heart Rate',
-                  type: 'column',
+                  type: 'line',
                   fill: 'solid',
-                  data: [23, 11, 22, 27, 13, 22, 37, 21, 44, 22, 30],
+                  data: heartRateQueue,
                 },
                 {
                   name: 'Blood Pressure',

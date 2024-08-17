@@ -154,5 +154,23 @@ class DeviceDataService {
       throw error; // Rethrow error to be handled by the caller
     }
   }
+
+  async getRealTimeData(deviceId, callback) {
+    try {
+      const deviceDocRef = DeviceDataCollection.doc(deviceId);
+
+      deviceDocRef.onSnapshot((doc) => {
+        if (doc.exists) {
+          callback(null, { id: doc.id, ...doc.data() });
+        } else {
+          callback('No such document!', null);
+        }
+      }, (error) => {
+        callback(error, null);
+      });
+    } catch (error) {
+      callback(error, null);
+    }
+  }
 }
 module.exports = new DeviceDataService()

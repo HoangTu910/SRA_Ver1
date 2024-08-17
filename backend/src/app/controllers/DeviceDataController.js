@@ -99,9 +99,27 @@ exports.uploadIDDeviceForUserController = async(req, res) => {
 exports.getDataSensorFromDatabaseController = async(req, res) => {
   try {
     const { deviceId } = req.body;
+    
     const deviceData = await DeviceDataService.getDataSensorFromDatabase(deviceId);
     res.json({ total: deviceData });
   } catch (error) {
+    
     res.status(500).send('Server error');
   }
 }
+
+  exports.getRealTimeDataController = async (req, res) => {
+    try {
+      const { deviceId } = req.body;
+  
+      DeviceDataService.getRealTimeData(deviceId, (error, data) => {
+        if (error) {
+          return res.status(500).json({ error });
+        }
+        return res.json(data);
+      });
+    } catch (err) {
+      console.error('Error in getRealTimeData controller:', err);
+      res.status(500).send('Server error');
+    }
+  };

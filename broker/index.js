@@ -26,7 +26,7 @@ const startEvents = () => {
       return callback(error, false);
     };
 
-    const topics = ['sensor/hoanghuutu'];
+    const topics = ['sensors/data'];
     // authorizing client to publish on a message topic
     aedes.authorizePublish = (client, packet, callback) => {
       // check topics
@@ -37,8 +37,8 @@ const startEvents = () => {
       return callback(
         new Error('You are not authorized to publish on this message topic.')
       );
-    };
-
+    };  
+    
     // emitted when a client connects to the broker
     aedes.on('client', function (client) {
       console.log(

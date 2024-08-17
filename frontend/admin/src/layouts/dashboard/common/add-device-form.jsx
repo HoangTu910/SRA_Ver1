@@ -18,18 +18,21 @@ export default function InputWithButton() {
     var user = auth.currentUser;
     const userId = user.uid;
     try {
-      const response = await axios.post('http://113.161.225.11:6969/api/devices/upload', { deviceId });
+      const response = await axios.post('http://113.161.225.11:6969/api/devices/datasensor', { deviceId });
+      
       const responseForIdDeviceInUser = await axios.post('http://113.161.225.11:6969/api/devices/userupload', { deviceId, userId })
       if (response.status === 200 && responseForIdDeviceInUser.status === 200) {
         console.log("Document created successfully!");
         alert("Document created successfully!");
         setDeviceId(""); // Clear input after success
+        location.reload();
       } else {
         throw new Error("Unexpected response status");
       }
     } catch (err) {
       console.error("Error creating document: ", err);
-      setError("Error creating document. Please try again.");
+      alert("No deviceID founded!");
+      // setError("Error creating document. Please try again.");
     } finally {
       setLoading(false);
     }

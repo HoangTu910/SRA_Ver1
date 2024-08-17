@@ -36,8 +36,10 @@ class AuthController {
     
 
     logOut = async (req, res) => {
+        const { token } = req.body;
         try {
-            await logout();
+            
+            // await logout(token);
             res.status(200).json("Logged out");
         } catch (error) {
             console.error("Logout failed: ", error.message);
