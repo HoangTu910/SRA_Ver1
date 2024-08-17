@@ -48,7 +48,10 @@ typedef struct {
 uint16_t Compute_CRC16(uint8_t* data, size_t length);
 void log_error(const char* error_message);
 int parse_frame(uint8_t* received_data, size_t length);
-uint8_t transitionFrame(Frame_t *frame, Encrypt_Frame_t *en_frame);
+uint8_t transitionFrame(Frame_t frame, Encrypt_Frame_t *en_frame);
 int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame);
 int decryptDataPacket(Encrypt_Frame_t *en_frame);
+uint8_t reconstructDecryptedData(unsigned char *decryptedtext);
+uint8_t *hexToBinary(const char *hex, size_t hexLen, size_t *binaryLen);
+
 #endif

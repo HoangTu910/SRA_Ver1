@@ -94,13 +94,18 @@ int parse_frame(uint8_t *received_data, size_t length)
     return 0;  // Success
 }
 
-uint8_t transitionFrame(Frame_t *frame, Encrypt_Frame_t *en_frame)
+uint8_t transitionFrame(Frame_t frame, Encrypt_Frame_t *en_frame)
 {
-    frame->h1 = en_frame->h1;
-    frame->h2 = en_frame->h2;
-    frame->crc = en_frame->crc;
-    frame->t1 = en_frame->t1;
-    frame->t2 = en_frame->t2;
+    // if (en_frame == NULL) {
+    //     Serial.println("En_Frame NULL");
+    //     return 1;  
+    // }
+    en_frame->h1 = frame.h1;
+    en_frame->h2 = frame.h2;
+    en_frame->crc = frame.crc;
+    en_frame->t1 = frame.t1;
+    en_frame->t2 = frame.t2;
+    return 0;
 }
 
 int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame)
@@ -159,7 +164,7 @@ int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame)
     } else {
         Serial.println("Decryption failed!");
     }
-
+    reconstructDecryptedData(decryptedtext);
     return 1;  
 }
 
@@ -183,8 +188,72 @@ int decryptDataPacket(Encrypt_Frame_t* en_frame){
             Serial.print(decryptedtext[i], HEX);
         }
         Serial.println();
-    } else {
-        Serial.println("Decryption failed!");
-    }
+        Serial.println("Construct");
+        //reconstructDecryptedData(decryptedtext);
+        } else {
+            Serial.println("Decryption failed!");
+        }
     return 0;
+}
+
+uint8_t reconstructDecryptedData(unsigned char *decryptedtext) {
+    if (decryptedtext == NULL) {
+        return 1; // Return error if the input pointer is NULL
+    }
+
+    // Print the deviceId (first 32 bytes)
+    Serial.print("Device ID: ");
+    for (int i = 0; i < 32; i++) {
+        if (decryptedtext[i] == '\0') break;
+        Serial.print((char)decryptedtext[i]);
+    }
+    Serial.println();
+
+    // Extract and print the deviceLen (10 bits, starting from byte 32)
+    uint16_t deviceLen = decryptedtext[32] | ((decryptedtext[33] & 0x03) << 8);
+    Serial.print("Device Length: ");
+    Serial.println(deviceLen);
+
+    // Extract and print the dataLen (10 bits, overlapping with deviceLen)
+    uint16_t dataLen = ((decryptedtext[33] & 0xFC) >> 2) | (decryptedtext[34] << 6);
+    Serial.print("Data Length: ");
+    Serial.println(dataLen);
+
+    // Print the remaining data (next 64 bytes)
+    if (dataLen >= 3) {  
+        uint8_t heartRate = decryptedtext[36];
+        uint8_t spO2 = decryptedtext[37];
+        uint8_t temperature = decryptedtext[38];
+        Serial.print("Heart Rate: ");
+        Serial.println(heartRate);
+        Serial.print("SpO2: ");
+        Serial.println(spO2);
+        Serial.print("Temperature: ");
+        Serial.println(temperature);
+    } else {
+        Serial.println("Insufficient data length to extract health metrics.");
+    }
+
+    return 0; 
+}
+
+uint8_t *hexToBinary(const char *hex, size_t hexLen, size_t *binaryLen)
+{
+    if (hexLen % 2 != 0) {
+        // Invalid hex string length
+        return NULL;
+    }
+
+    *binaryLen = hexLen / 2;
+    uint8_t *binary = (uint8_t *)malloc(*binaryLen);
+    if (binary == NULL) {
+        return NULL;
+    }
+
+    for (size_t i = 0, j = 0; i < hexLen; i += 2, j++) {
+        char hexByte[3] = { hex[i], hex[i + 1], '\0' };
+        binary[j] = (uint8_t)strtol(hexByte, NULL, 16);
+    }
+
+    return binary;
 }

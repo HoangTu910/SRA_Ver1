@@ -94,7 +94,7 @@ void loop() {
             }
         }
 
-        transitionFrame(&received_frame, &encrypted_frame);
+        transitionFrame(received_frame, &encrypted_frame);
 
         int result = encryptDataPacket(&received_frame, &encrypted_frame);
         if (result != 1) {
