@@ -161,6 +161,10 @@ After construct a new struct *encrypted_struct*, the new struct will be convert 
 * Server response and receive JSON package
 ![ảnh](https://github.com/user-attachments/assets/0717599e-43b3-4fdf-a85f-52df07edeb7f)
 
+* Error if cannot establish three-way handshake between gateway and server
+![ảnh](https://github.com/user-attachments/assets/eb05064c-37cc-495b-9e92-6563d6a13b40)
+
+
 
 
 
