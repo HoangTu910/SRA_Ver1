@@ -153,6 +153,7 @@ Update ACK for three-way handshake and device ID data type.
 ![ảnh](https://github.com/user-attachments/assets/d8da38c0-ede3-4352-9b54-6a1459b6dace)
 
 ### Three way handshake between ESP32 Gateway and API Server
+After construct a new struct *encrypted_struct*, the new struct will be convert into JSON base to send to server. Before send it to server, gateway will publish a ACK command on *handshake/ack* topic, the server will subscribe to that topic and publish SYN_ACK command on *handshake/syn_ack* topic. The gateway will subscribe to that topic and verify, if correct ESP32 will publish the final ACK and establish the connection. The JSON will be sent to server for parsing and process.
 
 * ESP32 send ACK for initiating three-way handshake
 ![ảnh](https://github.com/user-attachments/assets/0ffac51d-d26f-4bdd-9095-e70b23d585ac)
