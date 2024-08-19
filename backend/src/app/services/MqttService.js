@@ -5,7 +5,20 @@ const DeviceDataService = require('./DeviceDataService');
 const brokerUrl = 'mqtt://localhost:1883';
 const topic = 'sensors/data';
 
+const TOPIC_HANDSHAKE_SYN = 'handshake/syn';
+const TOPIC_HANDSHAKE_SYN_ACK = 'handshake/syn-ack';
+const TOPIC_HANDSHAKE_ACK = 'handshake/ack';
+const DATA_TOPIC = 'sensors/data';
+
+const SYN = Buffer.from([0xA1]); ;
+const SYN_ACK = Buffer.from([0xA2]); ;
+const ACK = Buffer.from([0xA3]); ;
+
 let client;
+let handshakeState = {
+    initiated: false,
+    completed: false,
+};
 
 const encodedPassword = Buffer.from('123').toString('base64');
 console.log(`Encoded Password: ${encodedPassword}`); 
@@ -15,41 +28,111 @@ const options = {
     password: '123', // Correct password, base64 encoded
 };
 
+function initiateHandshake() {
+    // Publish SYN message to start the handshake
+    client.publish('handshake/initiate', SYN);
+    handshakeState.initiated = true;
+    console.log('Handshake initiated.');
+}
+
+async function handleHandshakeResponse(message) {
+    if (message.toString() === 'SYN-ACK') {
+        // Publish ACK message to complete the handshake
+        client.publish('handshake/acknowledge', ACK);
+        handshakeState.completed = true;
+        console.log('Handshake completed.');
+    }
+}
+
 function initMQTT() {
     client = mqtt.connect(brokerUrl, options);
 
     client.on('connect', () => {
         console.log('Connected to MQTT broker');
-        client.subscribe(topic, { qos: 1 }, (err) => {
+        // Subscribe to topics
+        client.subscribe(TOPIC_HANDSHAKE_SYN, { qos: 1 }, (err) => {
             if (err) {
-                console.error(`Failed to subscribe to ${topic}:`, err);
+                console.error(`Failed to subscribe to ${TOPIC_HANDSHAKE_SYN}:`, err);
             } else {
-                console.log(`Subscribed to ${topic}`);
+                console.log(`Subscribed to ${TOPIC_HANDSHAKE_SYN}`);
+            }
+        });
+        client.subscribe(TOPIC_HANDSHAKE_SYN_ACK, { qos: 1 }, (err) => {
+            if (err) {
+                console.error(`Failed to subscribe to ${TOPIC_HANDSHAKE_SYN_ACK}:`, err);
+            } else {
+                console.log(`Subscribed to ${TOPIC_HANDSHAKE_SYN_ACK}`);
+            }
+        });
+        client.subscribe(TOPIC_HANDSHAKE_ACK, { qos: 1 }, (err) => {
+            if (err) {
+                console.error(`Failed to subscribe to ${TOPIC_HANDSHAKE_ACK}:`, err);
+            } else {
+                console.log(`Subscribed to ${TOPIC_HANDSHAKE_ACK}`);
+            }
+        });
+        client.subscribe(DATA_TOPIC, { qos: 1 }, (err) => {
+            if (err) {
+                console.error(`Failed to subscribe to ${DATA_TOPIC}:`, err);
+            } else {
+                console.log(`Subscribed to ${DATA_TOPIC}`);
             }
         });
     });
+    
 
     client.on('message', async (topic, message) => {
         const startTime = Date.now();
-        console.log(`Raw ${topic}:`, message.toString());
-        try {
-            const topicParts = topic.split('/');
-            const deviceId = topicParts[1];
-            const data = JSON.parse(message.toString());
-
-            console.log('Data: ', data);
-            console.log(`Received data on topic ${topic}:`);
-            console.log(`Heart Rate: ${data.heart_rate}`);
-            console.log(`SpO2: ${data.spO2}`);
-            console.log(`Temperature: ${data.temperature}`);
-            console.log(`Device ID: ${data.id_device.toString()}`);
-
-            // Write data to Firestore
-            await DeviceDataService.createDeviceData(data, deviceId);
-            const endTime = Date.now();
-            console.log(`Processed message in ${endTime - startTime}ms`);
-        } catch (e) {
-            console.error('Failed to parse message or write to Firestore:', e);
+        const hexData = message.toString('hex'); // Convert message to HEX string
+        const messageBuffer = Buffer.from(hexData, 'hex'); 
+        //console.log(`Raw ${topic}:`, messageBuffer);
+        
+        if (topic === 'handshake/syn') {
+            // Handle SYN from ESP32
+            console.log('Handshake SYN received.');
+            const commandSyn = messageBuffer[0];
+            console.log(`Command SYN value: ${commandSyn.toString(16).toUpperCase()}`);
+            client.publish('handshake/syn-ack', SYN_ACK, { qos: 1 }, (err) => {
+                if (err) {
+                    console.error('Failed to publish SYN-ACK:', err);
+                } else {
+                    console.log('Published SYN-ACK');
+                }
+            });
+        } else if (topic === 'handshake/syn-ack') {
+            // Handle SYN-ACK response
+            console.log('Handshake SYN-ACK received.');
+            // Wait for ACK from the ESP32
+        } else if (topic === 'handshake/ack') {
+            if (message.toString() === ACK.toString()) {
+                console.log('Handshake ACK received.');
+                // client.subscribe('sensors/data', { qos: 1 }, (err) => {
+                //     if (err) {
+                //         console.error(`Failed to subscribe to sensors/data:`, err);
+                //     } else {
+                //         console.log('Subscribed to sensors/data');
+                //     }
+                // });
+            }
+        } else if (topic === 'sensors/data') {
+            try {
+                // const topicParts = topic.split('/');
+                // const deviceId = topicParts[1];
+                const data = JSON.parse(message.toString());
+                // console.log('Data: ', data);
+                // console.log(`Received data on topic ${topic}:`);
+                // console.log(`Heart Rate: ${data.heart_rate}`);
+                // console.log(`SpO2: ${data.spO2}`);
+                // console.log(`Temperature: ${data.temperature}`);
+                // console.log(`Device ID: ${data.id_device.toString()}`);
+                console.log('Data: ', data);
+                // Write data to Firestore
+                //await DeviceDataService.createDeviceData(data, deviceId);
+                const endTime = Date.now();
+                console.log(`Processed message in ${endTime - startTime}ms`);
+            } catch (e) {
+                console.error('Failed to parse message or write to Firestore:', e);
+            }
         }
     });
 

@@ -26,14 +26,14 @@ const startEvents = () => {
       return callback(error, false);
     };
 
-    const topics = ['sensors/data'];
+    const topics = ['sensors/data', 'handshake/syn', 'handshake/syn-ack', 'handshake/ack' ];
     // authorizing client to publish on a message topic
     aedes.authorizePublish = (client, packet, callback) => {
       // check topics
       if (topics.find((topic) => packet.topic.includes(topic))) {
         return callback(null);
       }
-      console.log('Error ! Unauthorized publish to a topic.');
+      console.log('Error! Unauthorized publish to topic:', packet.topic);
       return callback(
         new Error('You are not authorized to publish on this message topic.')
       );
