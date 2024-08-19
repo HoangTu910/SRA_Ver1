@@ -1,6 +1,7 @@
 #ifndef _FRAME_H_
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <stdint.h>
 #include "encrypt.h"
 #include "decrypt.h"
@@ -9,7 +10,6 @@
 #define H2_INDEX 0xBB
 #define T1_INDEX 0xCC
 #define T2_INDEX 0xDD
-
 
 typedef struct {
     char deviceId[32];
@@ -53,5 +53,5 @@ int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame);
 int decryptDataPacket(Encrypt_Frame_t *en_frame);
 uint8_t reconstructDecryptedData(unsigned char *decryptedtext);
 uint8_t *hexToBinary(const char *hex, size_t hexLen, size_t *binaryLen);
-
+String serializeToJSON(Encrypt_Frame_t& frame);
 #endif

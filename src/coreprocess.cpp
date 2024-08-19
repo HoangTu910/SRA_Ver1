@@ -257,3 +257,27 @@ uint8_t *hexToBinary(const char *hex, size_t hexLen, size_t *binaryLen)
 
     return binary;
 }
+
+String serializeToJSON(Encrypt_Frame_t &frame)
+{
+    StaticJsonDocument<512> doc;// Adjust size based on the actual data size
+    doc["h1"] = frame.h1;
+    doc["h2"] = frame.h2;
+    
+    // Convert dataEncrypted array to a JSON array
+    JsonArray dataArray = doc.createNestedArray("dataEncrypted");
+    for (int i = 0; i < sizeof(frame.dataEncrypted); ++i) {
+        dataArray.add(frame.dataEncrypted[i]);
+    }
+    
+    doc["t1"] = frame.t1;
+    doc["t2"] = frame.t2;
+    doc["crc"] = frame.crc;
+
+    String jsonString;
+    serializeJson(doc, jsonString);
+    //Serial.println(jsonString.c_str());
+    return jsonString;
+}
+
+

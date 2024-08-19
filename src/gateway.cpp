@@ -1,8 +1,11 @@
+#ifndef _GATEWAY_H
+#define _GATEWAT_H
 #include "gateway.h"
+#include "handshake.h"
 
 // Network credentials
-const char* ssid = "OWLCLUB";
-const char* password = "OwlclubUS";
+const char* ssid = "The jade coffee 2_2.4G";
+const char* password = "caphengon";
 
 // MQTT Broker
 const int mqtt_port = 1883;
@@ -10,7 +13,8 @@ const char* mqtt_user = "admin";
 const char* mqtt_pass = "123";
 const char* mqtt_server = "113.161.225.11";
 const char* device_id = "newdevice123";
-
+const char* dataTopic = "sensors/data";
+bool receivedSynAck = false; 
 // WiFi and MQTT client objects
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -44,6 +48,18 @@ void callback(char* topic, byte* message, unsigned int length) {
         messageTemp += (char)message[i];
     }
     Serial.println(messageTemp);
+
+    String mes = bytesToHexString(message, length);
+    if (String(topic) == "handshake/syn-ack") {
+        if (mes == String(SERVER_SYN_ACK, HEX)) { // Convert SERVER_SYN_ACK to hex string
+            Serial.println("SYN-ACK match found. Received SYN-ACK.");
+            receivedSynAck = true;
+        } else {
+            Serial.println("SYN-ACK mismatch.");
+        }
+    } else {
+        Serial.println("Topic did not match 'handshake/syn-ack'.");
+    }
 }
 
 void reconnect() {
@@ -72,3 +88,30 @@ uint8_t mqtt_setup()
     }
     return 0;
 }
+
+void publishFrame(Encrypt_Frame_t &frame, const char* topic)
+{
+    String json = serializeToJSON(frame);
+    
+    bool result = client.publish(topic, json.c_str());
+    Serial.print("Payload length: ");
+    Serial.println(json.length());
+    if (result) {
+        Serial.println("Published JSON successfully");
+    } else {
+        Serial.print("Failed to publish JSON. Error code: ");
+        Serial.println(result);
+    }
+}
+
+String bytesToHexString(byte* payload, unsigned int length) {
+    String hexString = "";
+    for (int i = 0; i < length; i++) {
+        if (payload[i] < 0x10) {
+            hexString += "0"; // Add leading zero if necessary
+        }
+        hexString += String(payload[i], HEX);
+    }
+    return hexString;
+}
+#endif

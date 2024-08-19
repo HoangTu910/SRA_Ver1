@@ -3,7 +3,6 @@
 #include "decrypt.h"
 #include "constants.h"
 #include "handshake.h"
-#include "frameparsing.h"
 #include "gateway.h"
 #include <stdio.h>
 #include <string.h>
@@ -82,6 +81,12 @@ void loop() {
     mqtt_setup();
     Frame_t received_frame;
     Encrypt_Frame_t encrypted_frame;
+    if (!client.connected()) {
+        Serial.println("MQTT client not connected, attempting to reconnect...");
+        reconnect();
+    } else {
+        client.loop();  
+    }
     Serial.println("----------Three way handshake---------");
     if (handshake.performHandshake(COMMAND_SYN, COMMAND_SYN_ACK, COMMAND_ACK)) {
         Serial.println("Handshake completed successfully!");
@@ -110,7 +115,9 @@ void loop() {
     } else {
         Serial.println("Handshake failed.");
     }
-    
-    
+
+    if(handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
+        publishFrame(encrypted_frame, dataTopic);
+    }
 }
 
