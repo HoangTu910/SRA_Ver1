@@ -152,6 +152,16 @@ Update ACK for three-way handshake and device ID data type.
 
 ![ảnh](https://github.com/user-attachments/assets/d8da38c0-ede3-4352-9b54-6a1459b6dace)
 
+### Three way handshake between ESP32 Gateway and API Server
+
+* ESP32 send ACK for initiating three-way handshake
+![ảnh](https://github.com/user-attachments/assets/0ffac51d-d26f-4bdd-9095-e70b23d585ac)
+
+* Server response and receive JSON package
+![ảnh](https://github.com/user-attachments/assets/0717599e-43b3-4fdf-a85f-52df07edeb7f)
+
+
+
 
 
 
