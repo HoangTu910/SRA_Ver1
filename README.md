@@ -168,12 +168,15 @@ After construct a new struct *encrypted_struct*, the new struct will be convert 
 For decryption, the *child_process* library will be used. In backend server will contain the C++ source of encryption and decryption. A makefile will be created for compile the whole C source file, when npm start the server, package.json will run the makefile to generate executable file of decryption. After the server received the full JSON data from gateway, it will pass the encrypted data into the process for decryption
 
 * Function to run the process
+  
 ![ảnh](https://github.com/user-attachments/assets/9e8e1f4d-3ab6-4a14-a2eb-3caadd0b8fb6)
 
 * Makefile to compile C source file
+  
 ![ảnh](https://github.com/user-attachments/assets/32e36f59-3ce5-4d1a-9f91-84daab2aa738)
 
-* Result
+* Result after decryption
+  
 ![ảnh](https://github.com/user-attachments/assets/027fa450-7e84-4ade-a7a3-eb88e658e10b)
 
 
