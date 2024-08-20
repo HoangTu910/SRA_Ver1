@@ -9,6 +9,8 @@
 #include <Arduino.h>
 #include <PubSubClient.h>
 
+int clenForTrans;
+
 void test_ascon_encryption_decryption() {
     const unsigned char plaintext[] = "Encrypt Data 9999";
     const unsigned char key[16] = ASCON_KEY;  // 128-bit key
@@ -63,6 +65,7 @@ void test_ascon_encryption_decryption() {
     } else {
         Serial.println("Decryption failed!");
     }
+    clenForTrans = clen;
 }
 
 ThreeWayHandshake handshake(Serial1, 5000);
@@ -81,6 +84,7 @@ void loop() {
     mqtt_setup();
     Frame_t received_frame;
     Encrypt_Frame_t encrypted_frame;
+    unsigned long long clen;
     if (!client.connected()) {
         Serial.println("MQTT client not connected, attempting to reconnect...");
         reconnect();
@@ -106,7 +110,7 @@ void loop() {
 
         transitionFrame(received_frame, &encrypted_frame);
 
-        int result = encryptDataPacket(&received_frame, &encrypted_frame);
+        int result = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
         if (result != 1) {
             Serial.println("Encryption failed");
         } else {
@@ -114,10 +118,10 @@ void loop() {
         }
     } else {
         Serial.println("Handshake failed.");
+        return;
     }
-
     if(handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
-        publishFrame(encrypted_frame, dataTopic);
+        publishFrame(encrypted_frame, dataTopic, clen);
     }
 }
 

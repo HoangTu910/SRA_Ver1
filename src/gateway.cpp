@@ -4,8 +4,8 @@
 #include "handshake.h"
 
 // Network credentials
-const char* ssid = "The jade coffee 2_2.4G";
-const char* password = "caphengon";
+const char* ssid = "Xuong Rang Coffee";
+const char* password = "";
 
 // MQTT Broker
 const int mqtt_port = 1883;
@@ -89,9 +89,9 @@ uint8_t mqtt_setup()
     return 0;
 }
 
-void publishFrame(Encrypt_Frame_t &frame, const char* topic)
+void publishFrame(Encrypt_Frame_t &frame, const char* topic, unsigned long long clen)
 {
-    String json = serializeToJSON(frame);
+    String json = serializeToJSON(frame, clen);
     
     bool result = client.publish(topic, json.c_str());
     Serial.print("Payload length: ");

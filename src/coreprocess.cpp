@@ -108,7 +108,7 @@ uint8_t transitionFrame(Frame_t frame, Encrypt_Frame_t *en_frame)
     return 0;
 }
 
-int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame)
+int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame, unsigned long long* getLen)
 {
     unsigned char *dataPacket = (unsigned char *)&frame->dataPacket;
     Serial.print("Data Log: ");
@@ -125,7 +125,7 @@ int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame)
     unsigned char nonce[16]; 
     generate_nonce(nonce);  
     const unsigned char assoc_data[] = "Metadata";
-
+    memcpy(en_frame->nonce, nonce, sizeof(en_frame->nonce));
     // Encrypt the data
     int ret = crypto_aead_encrypt(ciphertext, &ciphertextLen, dataPacket, dataPacketLen,
                                  assoc_data, strlen((char *)assoc_data),
@@ -141,6 +141,8 @@ int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame)
         Serial.print(" ");
     }
     Serial.println();
+
+    *getLen = ciphertextLen;
     
     memcpy(en_frame->dataEncrypted, ciphertext, ciphertextLen);
 
@@ -258,25 +260,40 @@ uint8_t *hexToBinary(const char *hex, size_t hexLen, size_t *binaryLen)
     return binary;
 }
 
-String serializeToJSON(Encrypt_Frame_t &frame)
+String serializeToJSON(Encrypt_Frame_t &frame, unsigned long long clen)
 {
-    StaticJsonDocument<512> doc;// Adjust size based on the actual data size
+    DynamicJsonDocument doc(4096);  // Adjust this size as needed
     doc["h1"] = frame.h1;
     doc["h2"] = frame.h2;
     
     // Convert dataEncrypted array to a JSON array
     JsonArray dataArray = doc.createNestedArray("dataEncrypted");
-    for (int i = 0; i < sizeof(frame.dataEncrypted); ++i) {
+    for (int i = 0; i < clen; ++i) {
         dataArray.add(frame.dataEncrypted[i]);
     }
+
+    // Printing the data array in HEX format
+    Serial.print("Data Array: ");
+    for (int i = 0; i < dataArray.size(); ++i) {
+        int value = dataArray[i];
+        char hexValue[3];
+        snprintf(hexValue, sizeof(hexValue), "%02X", value); // Convert the integer to a hex string
+        Serial.print(hexValue);  // Print the hex string
+        Serial.print(" ");    // Add a space for readability
+    }
+
+    Serial.println(); 
     
     doc["t1"] = frame.t1;
     doc["t2"] = frame.t2;
     doc["crc"] = frame.crc;
+    JsonArray nonceArray = doc.createNestedArray("nonce");
+    for (int i = 0; i < 16; ++i) {
+        nonceArray.add(frame.nonce[i]);
+    }
 
     String jsonString;
     serializeJson(doc, jsonString);
-    //Serial.println(jsonString.c_str());
     return jsonString;
 }
 

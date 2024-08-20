@@ -25,6 +25,6 @@ void setup_wifi();
 void callback(char* topic, byte* message, unsigned int length);
 void reconnect();
 uint8_t mqtt_setup();
-void publishFrame(Encrypt_Frame_t& frame, const char* topic);
+void publishFrame(Encrypt_Frame_t& frame, const char* topic, unsigned long long clen);
 String bytesToHexString(byte* payload, unsigned int length);
 #endif // WIFI_CONFIG_H

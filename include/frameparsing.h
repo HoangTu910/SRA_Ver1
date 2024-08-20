@@ -39,6 +39,7 @@ typedef struct {
     unsigned char dataEncrypted[255];
     uint8_t t1;
     uint8_t t2;
+    unsigned char nonce[16];
     union {
         uint16_t crc;
         uint8_t crcArr[2];  // CRC as array of 2 bytes
@@ -49,9 +50,9 @@ uint16_t Compute_CRC16(uint8_t* data, size_t length);
 void log_error(const char* error_message);
 int parse_frame(uint8_t* received_data, size_t length);
 uint8_t transitionFrame(Frame_t frame, Encrypt_Frame_t *en_frame);
-int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame);
+int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame, unsigned long long* getLen);
 int decryptDataPacket(Encrypt_Frame_t *en_frame);
 uint8_t reconstructDecryptedData(unsigned char *decryptedtext);
 uint8_t *hexToBinary(const char *hex, size_t hexLen, size_t *binaryLen);
-String serializeToJSON(Encrypt_Frame_t& frame);
+String serializeToJSON(Encrypt_Frame_t& frame, unsigned long long clen);
 #endif
