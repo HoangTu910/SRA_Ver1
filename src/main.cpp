@@ -105,6 +105,7 @@ void loop() {
             if (result != 0) {
                 Serial.print("Failed to parse frame, error code: ");
                 Serial.println(result);
+                return;
             }
         }
 

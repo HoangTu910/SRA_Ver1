@@ -212,20 +212,20 @@ uint8_t reconstructDecryptedData(unsigned char *decryptedtext) {
     Serial.println();
 
     // Extract and print the deviceLen (10 bits, starting from byte 32)
-    uint16_t deviceLen = decryptedtext[32] | ((decryptedtext[33] & 0x03) << 8);
+    uint16_t deviceLen = decryptedtext[32];
     Serial.print("Device Length: ");
     Serial.println(deviceLen);
 
     // Extract and print the dataLen (10 bits, overlapping with deviceLen)
-    uint16_t dataLen = ((decryptedtext[33] & 0xFC) >> 2) | (decryptedtext[34] << 6);
+    uint16_t dataLen = decryptedtext[33];
     Serial.print("Data Length: ");
     Serial.println(dataLen);
 
     // Print the remaining data (next 64 bytes)
     if (dataLen >= 3) {  
-        uint8_t heartRate = decryptedtext[36];
-        uint8_t spO2 = decryptedtext[37];
-        uint8_t temperature = decryptedtext[38];
+        uint8_t heartRate = decryptedtext[35];
+        uint8_t spO2 = decryptedtext[36];
+        uint8_t temperature = decryptedtext[37];
         Serial.print("Heart Rate: ");
         Serial.println(heartRate);
         Serial.print("SpO2: ");

@@ -13,10 +13,10 @@
 
 typedef struct {
     char deviceId[32];
-    uint16_t deviceLen : 10;   
+    uint8_t deviceLen;   
     union {
         uint8_t dataLenArr[2];
-        uint16_t dataLen : 10; 
+        uint8_t dataLen; 
     };
     uint8_t data[64];
 } __attribute__((packed)) DataPacket_t;
