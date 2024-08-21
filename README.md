@@ -179,6 +179,14 @@ For decryption, the *child_process* library will be used. In backend server will
   
 ![ảnh](https://github.com/user-attachments/assets/027fa450-7e84-4ade-a7a3-eb88e658e10b)
 
+## Fully operation of the system
+
+* The STM32 init the three way handshake with ESP32 by sending SYN command. After completed verify the three way handshake, STM32 start to send to full frame with the strucutre explained above to ESP32. ESP32 will parse the frame and encrypt the data packet using Ascon-128a. ESP32 will construct a new frame and send it to server (it also establish the three-way handshake).
+* In server there are three main component backend, socket and broker. Backend and broker has been explained above, the socket is the brigde between server and database, to synchronize the data between device and database (make sure that database update continously and constantly every time data change). Socket will call an API to backend to require data send update the data to database quickly.
+
+![ảnh](https://github.com/user-attachments/assets/2a5281d3-b64e-4b16-88cc-7ac7cca96762)
+
+
 
 
 
