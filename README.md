@@ -196,6 +196,11 @@ For decryption, the *child_process* library will be used. In backend server will
 
 ![ảnh](https://github.com/user-attachments/assets/acb63d1f-13c5-4109-bcc5-209157f76654)
 
+*Interface*
+
+![ảnh](https://github.com/user-attachments/assets/48a8496d-0c3d-4e27-acba-db75705f61fa)
+
+
 
 
 
