@@ -205,7 +205,7 @@ For decryption, the *child_process* library will be used. In backend server will
 ### Some keywords
 * Data compression (RLE, DPCM)
 * Data aggregation (Event-based)
-* Anomaly Detection (ML - Isolation Forest - Decision Tree).
+* Anomaly Detection (ML - Isolation Forest - Decision Tree) or (ML - Autoencoder - LSTM).
 
 
 
