@@ -201,6 +201,12 @@ For decryption, the *child_process* library will be used. In backend server will
 
 ![ảnh](https://github.com/user-attachments/assets/48a8496d-0c3d-4e27-acba-db75705f61fa)
 
+## Edge AI implemetation (ESP32)
+### Some keywords
+* Data compression (RLE, DPCM)
+* Data aggregation (Event-based)
+* Anomaly Detection (ML - Isolation Forest - Decision Tree).
+
 
 
 
