@@ -85,6 +85,7 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 * Doctor feature (Yet).
 * Developer or User (User).
 * Time series database.
+* Cryptography benchmark.
 --------------------------------------------------
 * What is synchronize between Device and Server ?
 * ACK (Handshaking).
