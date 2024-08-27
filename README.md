@@ -266,6 +266,12 @@ https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authus
 
 - After training, the model is converted to TensorFlow Lite format, which allows it to be deployed on devices with limited resources, such as microcontrollers.
 
+## Implement model on ESP32 using Tensorflow Lite
+
+- The model has been successfully implemented on ESP32, the prediction is correct with the given data
+- A problem is Flash Memory consume 38.2% in total (the first implement of gateway is 58.7%) so in total will be 96.6% (predict)
+ 
+![ảnh](https://github.com/user-attachments/assets/f4667c1e-8d3d-4098-915e-2abcd9b59021)
 
 
 
