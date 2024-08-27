@@ -230,7 +230,8 @@ For decryption, the *child_process* library will be used. In backend server will
 * Label: High-Intensity Exercise (Sport)
 ### Dataset structure
 
-![ảnh](https://github.com/user-attachments/assets/26e121a2-751b-4da5-b371-1afc9fb0851f)
+![ảnh](https://github.com/user-attachments/assets/ad196d75-9cf9-4609-b60a-086205d18203)
+
 
 
 
