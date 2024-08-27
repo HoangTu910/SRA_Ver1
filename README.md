@@ -228,6 +228,10 @@ For decryption, the *child_process* library will be used. In backend server will
 * Accelerometer: 14-18 m/s²
 * Temperature: 37.5-38.0°C
 * Label: High-Intensity Exercise (Sport)
+### Dataset structure
+
+![ảnh](https://github.com/user-attachments/assets/26e121a2-751b-4da5-b371-1afc9fb0851f)
+
 
 
 
