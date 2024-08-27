@@ -244,7 +244,29 @@ For decryption, the *child_process* library will be used. In backend server will
 | 65               | 0.4                   | 36.3             | Resting                             |
 
 ## Anomaly Detection V1.0
+
+- This model is the combination between Isolation Forest and Neural Networking.
 https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authuser=2
+
+### Define the specific conditions
+
+- There are 4 condition with specific data and parameters for each condition (define above)
+
+### Apply Isolation Forest
+
+![ảnh](https://github.com/user-attachments/assets/9cc0f092-5153-49c2-90d3-2e454e862dc7)
+- The Isolation Forest algorithm is used to detect anomalies in the heart rate data and apply the 'Anomaly' label for each data.
+
+### Apply Neural Networking
+
+- The features (heart rate, accelerometer, temperature) and labels (anomaly detection results) are separated for training the deep learning model.
+- The dataset is balanced using SMOTE (Synthetic Minority Over-sampling Technique), which generates synthetic samples for the minority class to address class imbalance issues.
+
+### Conversion to Tensorflow Lite
+
+- After training, the model is converted to TensorFlow Lite format, which allows it to be deployed on devices with limited resources, such as microcontrollers.
+
+
 
 
 
