@@ -231,7 +231,17 @@ For decryption, the *child_process* library will be used. In backend server will
 ### Dataset structure
 
 ![ảnh](https://github.com/user-attachments/assets/ad196d75-9cf9-4609-b60a-086205d18203)
-
+Heart Rate (bpm)	Accelerometer (m/s²)	Temperature (°C)	Activity State (Label)
+60	0.5	36.5	Resting
+65	0.4	36.4	Resting
+90	5.2	37.0	Walking
+95	5.8	37.2	Walking
+130	10.2	37.5	Running
+140	12.0	37.8	Running
+160	15.5	38.0	High-Intensity Exercise (Sport)
+150	14.0	38.1	High-Intensity Exercise (Sport)
+100	3.5	36.9	Walking
+65	0.4	36.3	Resting
 
 
 
