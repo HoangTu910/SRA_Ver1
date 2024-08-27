@@ -243,6 +243,9 @@ For decryption, the *child_process* library will be used. In backend server will
 | 100              | 3.5                   | 36.9             | Walking                             |
 | 65               | 0.4                   | 36.3             | Resting                             |
 
+## Anomaly Detection V1.0
+https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authuser=2
+
 
 
 
