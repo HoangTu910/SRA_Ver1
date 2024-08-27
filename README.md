@@ -207,6 +207,28 @@ For decryption, the *child_process* library will be used. In backend server will
 * Data aggregation (Event-based)
 * Anomaly Detection (ML - Isolation Forest - Decision Tree) or (ML - Autoencoder - LSTM).
 
+## Example data points
+### Resting
+* Heart Rate: 60-70 bpm
+* Accelerometer: 0.3-1.0 m/s²
+* Temperature: 36.3-36.7°C
+* Label: Resting
+### Walking
+* Heart Rate: 85-100 bpm
+* Accelerometer: 3-6 m/s²
+* Temperature: 36.8-37.1°C
+* Label: Walking
+### Running
+* Heart Rate: 120-140 bpm
+* Accelerometer: 10-12 m/s²
+* Temperature: 37.2-37.5°C
+* Label: Running
+### High-Intensity Exercise (Sport)
+* Heart Rate: 150-170 bpm
+* Accelerometer: 14-18 m/s²
+* Temperature: 37.5-38.0°C
+* Label: High-Intensity Exercise (Sport)
+
 
 
 
