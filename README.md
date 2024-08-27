@@ -53,6 +53,8 @@ $ npm run dev
 
 **Pages Folder**: element_name in App.jsx depend on .jsx file in pages. If want to add new path, create new .jsx file and config html like login.jsx. If copy a template on Tailwind rememeber to rename the *function* and *export default*.
 
+## Phase 2: Server Implementation
+
 ### Server-side (Backend)
 In server of the system contain three main components: MQTT Broker, Socket and Backend (Data processing layer).
 
@@ -201,7 +203,7 @@ For decryption, the *child_process* library will be used. In backend server will
 
 ![ảnh](https://github.com/user-attachments/assets/48a8496d-0c3d-4e27-acba-db75705f61fa)
 
-## Edge AI implemetation (ESP32)
+## Phase 3: Edge AI implemetation (ESP32)
 ### Some keywords
 * Data compression (RLE, DPCM)
 * Data aggregation (Event-based)
