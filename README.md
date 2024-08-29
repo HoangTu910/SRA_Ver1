@@ -275,7 +275,32 @@ https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authus
  
 ![ảnh](https://github.com/user-attachments/assets/f4667c1e-8d3d-4098-915e-2abcd9b59021)
 
+## Bechmark Cryptography
 
+### Table of Comparison
+| Block Size (bytes) | Algorithm              | Time Taken (seconds) | Clock Cycles Used | Throughput (bytes/sec) | Cycles per Byte | Microseconds per Byte | Memory Used (bytes) |
+|---------------------|------------------------|-----------------------|---------------------|-------------------------|------------------|-----------------------|----------------------|
+| **16**              | ChaCha20-Poly1305      | 0.04                  | 8,919,556           | 432,432.43              | 557.47           | 2.31                  | 200                  |
+|                     | AES                    | 0.01                  | 1,968,911           | 2,000,000.00            | 123.06           | 0.50                  | 0                    |
+|                     | Ascon-128a            | 0.03                  | 7,299,871           | 533,333.33              | 456.24           | 1.87                  | 0                    |
+|                     |                        |                       |                     |                         |                  |                       |                      |
+| **32**              | ChaCha20-Poly1305      | 0.04                  | 8,763,058           | 864,864.86              | 273.85           | 1.16                  | 0                    |
+|                     | AES                    | 0.01                  | 1,936,478           | 4,000,000.00            | 60.51            | 0.25                  | 0                    |
+|                     | Ascon-128a            | 0.04                  | 8,697,091           | 888,888.89              | 271.78           | 1.12                  | 0                    |
+|                     |                        |                       |                     |                         |                  |                       |                      |
+| **64**              | ChaCha20-Poly1305      | 0.04                  | 8,762,747           | 1,729,729.73            | 136.92           | 0.58                  | 0                    |
+|                     | AES                    | 0.01                  | 1,936,731           | 7,111,111.11            | 30.26            | 0.14                  | 0                    |
+|                     | Ascon-128a            | 0.05                  | 11,576,552          | 1,333,333.33            | 180.88           | 0.75                  | 0                    |
+|                     |                        |                       |                     |                         |                  |                       |                      |
+| **128**             | ChaCha20-Poly1305      | 0.04                  | 8,764,661           | 3,459,459.46            | 68.47            | 0.29                  | 0                    |
+|                     | AES                    | 0.01                  | 1,936,730           | 16,000,000.00           | 15.13            | 0.06                  | 0                    |
+|                     | Ascon-128a            | 0.07                  | 17,334,833          | 1,777,777.78            | 135.43           | 0.56                  | 0                    |
+
+# Chart parameter
+![Gemini_Chart_Image_1dhqxa1dhqxa1dhq](https://github.com/user-attachments/assets/e8a1c156-556b-4bca-8f21-2305b48c5daa)
+![Gemini_Chart_Image_17ryci17ryci17ry](https://github.com/user-attachments/assets/07e1854d-00aa-4643-9046-48b2bb365a73)
+![Gemini_Chart_Image_d5xhrfd5xhrfd5xh](https://github.com/user-attachments/assets/f36ebb02-369b-4b47-8ed7-e780f57cffc2)
+![Gemini_Chart_Image_dfuqkgdfuqkgdfuq](https://github.com/user-attachments/assets/0419ee3f-4568-43c0-8247-8b5842a9a7e7)
 
 
 
