@@ -281,22 +281,37 @@ https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authus
 * AES still the best option for ESP32, it perform is outstanding compared to Chacha20 and Ascon-128a on ESP32.
 * With block size of 16 bytes and 32 bytes, Ascon-128a given better performance compared to Chacha20. However, with block size of 64 and 128 bytes Chacha20 given better performance compared to Ascon-128a.
 ### Table of Comparison
-# Encryption Algorithm Benchmarking Results
+### Results for Block Size: 16 bytes
 
-| Block Size (bytes) | Algorithm             | Time Taken (seconds) | Clock Cycles Used | Throughput (bytes/sec) | Cycles per Byte | Microseconds per Byte | Memory Used (bytes) |
-|---------------------|-----------------------|-----------------------|-------------------|-------------------------|------------------|----------------------|---------------------|
-| 16                  | ChaCha20-Poly1305     | 0.06                  | 14916726          | 253968.25               | 932.30           | 3.94                 | 0                   |
-| 32                  | ChaCha20-Poly1305     | 0.06                  | 14777813          | 524590.16               | 461.81           | 1.91                 | 0                   |
-| 64                  | ChaCha20-Poly1305     | 0.06                  | 14779155          | 1049180.33              | 230.92           | 0.95                 | 0                   |
-| 128                 | ChaCha20-Poly1305     | 0.06                  | 14779305          | 2098360.66              | 115.46           | 0.48                 | 0                   |
-| 16                  | AES                   | 0.01                  | 1972761           | 2000000.00              | 123.30           | 0.50                 | 0                   |
-| 32                  | AES                   | 0.01                  | 1936536           | 4000000.00              | 60.52            | 0.25                 | 0                   |
-| 64                  | AES                   | 0.01                  | 1936620           | 8000000.00              | 30.26            | 0.13                 | 0                   |
-| 128                 | AES                   | 0.01                  | 1936578           | 16000000.00             | 15.13            | 0.06                 | 0                   |
-| 16                  | Ascon-128a           | 0.03                  | 7213014           | 533333.33               | 450.81           | 1.87                 | 0                   |
-| 32                  | Ascon-128a           | 0.04                  | 8586188           | 888888.89               | 268.32           | 1.12                 | 0                   |
-| 64                  | Ascon-128a           | 0.05                  | 11407900          | 1333333.33              | 178.25           | 0.75                 | 0                   |
-| 128                 | Ascon-128a           | 0.07                  | 17054441          | 1802816.90              | 133.24           | 0.55                 | 0                   |
+| Algorithm             | Time Taken (seconds) | Clock Cycles Used | Throughput (bytes/sec) | Cycles per Byte | Microseconds per Byte | Memory Used (bytes) |
+|-----------------------|-----------------------|-------------------|-------------------------|------------------|----------------------|---------------------|
+| ChaCha20-Poly1305     | 0.06                  | 14916726          | 253968.25               | 932.30           | 3.94                 | 0                   |
+| AES                   | 0.01                  | 1972761           | 2000000.00              | 123.30           | 0.50                 | 0                   |
+| Ascon-128a           | 0.03                  | 7213014           | 533333.33               | 450.81           | 1.87                 | 0                   |
+
+### Results for Block Size: 32 bytes
+
+| Algorithm             | Time Taken (seconds) | Clock Cycles Used | Throughput (bytes/sec) | Cycles per Byte | Microseconds per Byte | Memory Used (bytes) |
+|-----------------------|-----------------------|-------------------|-------------------------|------------------|----------------------|---------------------|
+| ChaCha20-Poly1305     | 0.06                  | 14777813          | 524590.16               | 461.81           | 1.91                 | 0                   |
+| AES                   | 0.01                  | 1936536           | 4000000.00              | 60.52            | 0.25                 | 0                   |
+| Ascon-128a           | 0.04                  | 8586188           | 888888.89               | 268.32           | 1.12                 | 0                   |
+
+### Results for Block Size: 64 bytes
+
+| Algorithm             | Time Taken (seconds) | Clock Cycles Used | Throughput (bytes/sec) | Cycles per Byte | Microseconds per Byte | Memory Used (bytes) |
+|-----------------------|-----------------------|-------------------|-------------------------|------------------|----------------------|---------------------|
+| ChaCha20-Poly1305     | 0.06                  | 14779155          | 1049180.33              | 230.92           | 0.95                 | 0                   |
+| AES                   | 0.01                  | 1936620           | 8000000.00              | 30.26            | 0.13                 | 0                   |
+| Ascon-128a           | 0.05                  | 11407900          | 1333333.33              | 178.25           | 0.75                 | 0                   |
+
+### Results for Block Size: 128 bytes
+
+| Algorithm             | Time Taken (seconds) | Clock Cycles Used | Throughput (bytes/sec) | Cycles per Byte | Microseconds per Byte | Memory Used (bytes) |
+|-----------------------|-----------------------|-------------------|-------------------------|------------------|----------------------|---------------------|
+| ChaCha20-Poly1305     | 0.06                  | 14779305          | 2098360.66              | 115.46           | 0.48                 | 0                   |
+| AES                   | 0.01                  | 1936578           | 16000000.00             | 15.13            | 0.06                 | 0                   |
+| Ascon-128a           | 0.07                  | 17054441          | 1802816.90    
 
 
 ### Chart parameter
