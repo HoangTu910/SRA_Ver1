@@ -276,7 +276,7 @@ https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authus
 ![ảnh](https://github.com/user-attachments/assets/f4667c1e-8d3d-4098-915e-2abcd9b59021)
 
 ## Bechmark Cryptography
-
+- The result below base on running each algorithms 1000 times.
 ### Table of Comparison
 | Block Size (bytes) | Algorithm              | Time Taken (seconds) | Clock Cycles Used | Throughput (bytes/sec) | Cycles per Byte | Microseconds per Byte | Memory Used (bytes) |
 |---------------------|------------------------|-----------------------|---------------------|-------------------------|------------------|-----------------------|----------------------|
