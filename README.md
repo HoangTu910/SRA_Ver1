@@ -315,10 +315,8 @@ https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authus
 
 
 ### Chart parameter
-![Gemini_Chart_Image_1dhqxa1dhqxa1dhq](https://github.com/user-attachments/assets/e8a1c156-556b-4bca-8f21-2305b48c5daa)
-![Gemini_Chart_Image_17ryci17ryci17ry](https://github.com/user-attachments/assets/07e1854d-00aa-4643-9046-48b2bb365a73)
-![Gemini_Chart_Image_d5xhrfd5xhrfd5xh](https://github.com/user-attachments/assets/f36ebb02-369b-4b47-8ed7-e780f57cffc2)
-![Gemini_Chart_Image_dfuqkgdfuqkgdfuq](https://github.com/user-attachments/assets/0419ee3f-4568-43c0-8247-8b5842a9a7e7)
+
+https://www.kaggle.com/code/hiutao/visualize-cryptography/edit
 
 ### Community comparison between Chacha20 and Ascon-128a on ESP32
 
