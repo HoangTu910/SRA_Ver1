@@ -280,7 +280,7 @@ https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authus
 ### Table of Comparison
 | Block Size (bytes) | Algorithm              | Time Taken (seconds) | Clock Cycles Used | Throughput (bytes/sec) | Cycles per Byte | Microseconds per Byte | Memory Used (bytes) |
 |---------------------|------------------------|-----------------------|---------------------|-------------------------|------------------|-----------------------|----------------------|
-| **16**              | ChaCha20-Poly1305      | 0.04                  | 8,919,556           | 432,432.43              | 557.47           | 2.31                  | 200                  |
+| **16**              | ChaCha20-Poly1305      | 0.04                  | 8,919,556           | 432,432.43              | 557.47           | 2.31                  | 0                  |
 |                     | AES                    | 0.01                  | 1,968,911           | 2,000,000.00            | 123.06           | 0.50                  | 0                    |
 |                     | Ascon-128a            | 0.03                  | 7,299,871           | 533,333.33              | 456.24           | 1.87                  | 0                    |
 |                     |                        |                       |                     |                         |                  |                       |                      |
