@@ -302,6 +302,13 @@ https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authus
 ![Gemini_Chart_Image_d5xhrfd5xhrfd5xh](https://github.com/user-attachments/assets/f36ebb02-369b-4b47-8ed7-e780f57cffc2)
 ![Gemini_Chart_Image_dfuqkgdfuqkgdfuq](https://github.com/user-attachments/assets/0419ee3f-4568-43c0-8247-8b5842a9a7e7)
 
+### Community comparison between Chacha20 and Ascon-128a on ESP32
+
+- Actually it give the similar result as me
+
+![ảnh](https://github.com/user-attachments/assets/325443f0-d2f3-4c31-9024-9641297122c7)
+
+
 
 
 
