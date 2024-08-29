@@ -205,7 +205,7 @@ For decryption, the *child_process* library will be used. In backend server will
 
 ## Update Version 2: Egde AI combination
 
-- Instead of publish data to server continously, I have improved a model AI for detecting anomaly and only sunchronize with server if detected anomaly data. This approach will help reduce the load of the server and give a better visualize of the data.
+- Instead of publish data to server continously, I have improved a model AI for detecting anomaly and only sunchronize with server if detected anomaly data. This approach will help reduce the load of the server and give a better visualize of data. This idea come from Apple Watch and Samsung Watch.
 
 ![ảnh](https://github.com/user-attachments/assets/d1e3771e-155b-4e72-8826-69dcd3569d4b)
 
