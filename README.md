@@ -203,6 +203,13 @@ For decryption, the *child_process* library will be used. In backend server will
 
 ![ảnh](https://github.com/user-attachments/assets/48a8496d-0c3d-4e27-acba-db75705f61fa)
 
+## Update Version 2: Egde AI combination
+
+- Instead of publish data to server continously, I have improved a model AI for detecting anomaly and only sunchronize with server if detected anomaly data. This approach will help reduce the load of the server and give a better visualize of the data.
+
+![ảnh](https://github.com/user-attachments/assets/d1e3771e-155b-4e72-8826-69dcd3569d4b)
+
+
 ## Phase 3: Edge AI implemetation (ESP32)
 ### Some keywords
 * Data compression (RLE, DPCM)
