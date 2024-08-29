@@ -278,7 +278,7 @@ https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authus
 ## Bechmark Cryptography
 - The tests below were run on an ESP32 Dev Module running at 240MHz base on running each algorithms 1000 times.
 ### Conclusion
-* AES still the best option for ESP32, it perform is outstanding compare with Chacha20 and Ascon-128a on ESP32.
+* AES still the best option for ESP32, it perform is outstanding compared to Chacha20 and Ascon-128a on ESP32.
 * With block size of 16 bytes and 32 bytes, Ascon-128a given better performance compared to Chacha20. However, with block size of 64 and 128 bytes Chacha20 given better performance compared to Ascon-128a.
 ### Table of Comparison
 | Block Size (bytes) | Algorithm              | Time Taken (seconds) | Clock Cycles Used | Throughput (bytes/sec) | Cycles per Byte | Microseconds per Byte | Memory Used (bytes) |
