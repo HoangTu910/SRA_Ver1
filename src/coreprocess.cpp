@@ -87,6 +87,8 @@ int parse_frame(uint8_t *received_data, size_t length)
     Serial.println(frame->dataPacket.data[1]);
     Serial.print("Temperature: ");
     Serial.println(frame->dataPacket.data[2]);
+    Serial.print("Acceleration: ");
+    Serial.println(frame->dataPacket.data[3]);
     Serial.print("T1: ");
     Serial.println(frame->t1);
     Serial.print("T2: ");
@@ -222,16 +224,19 @@ uint8_t reconstructDecryptedData(unsigned char *decryptedtext) {
     Serial.println(dataLen);
 
     // Print the remaining data (next 64 bytes)
-    if (dataLen >= 3) {  
+    if (dataLen >= 4) {  
         uint8_t heartRate = decryptedtext[35];
         uint8_t spO2 = decryptedtext[36];
         uint8_t temperature = decryptedtext[37];
+        uint8_t acceleration = decryptedtext[38];
         Serial.print("Heart Rate: ");
         Serial.println(heartRate);
         Serial.print("SpO2: ");
         Serial.println(spO2);
         Serial.print("Temperature: ");
         Serial.println(temperature);
+        Serial.print("Acceleration: ");
+        Serial.println(acceleration);
     } else {
         Serial.println("Insufficient data length to extract health metrics.");
     }
@@ -296,5 +301,4 @@ String serializeToJSON(Encrypt_Frame_t &frame, unsigned long long clen)
     serializeJson(doc, jsonString);
     return jsonString;
 }
-
 

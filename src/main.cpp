@@ -1,15 +1,30 @@
+#include <TensorFlowLite_ESP32.h>
 #include "core.h"
 #include "encrypt.h"
 #include "decrypt.h"
 #include "constants.h"
 #include "handshake.h"
 #include "gateway.h"
+#include "TFLiteModel.h"
 #include <stdio.h>
 #include <string.h>
 #include <Arduino.h>
 #include <PubSubClient.h>
 
 int clenForTrans;
+TFLiteModel tfliteModel;
+
+typedef struct{
+    uint16_t dataSum = 0;
+    uint16_t dataMin = UINT16_MAX;
+    uint16_t dataMax = 0;
+} aggregateData;
+
+unsigned long previousMillis = 0;
+const long aggregationInterval = 30000; 
+uint16_t dataCount = 0;
+
+aggregateData heartRate, temperature, accelerator, spO2;
 
 void test_ascon_encryption_decryption() {
     const unsigned char plaintext[] = "Encrypt Data 9999";
@@ -72,6 +87,7 @@ ThreeWayHandshake handshake(Serial1, 5000);
 
 void setup() {
     Serial.begin(9600);  
+    tfliteModel.setup();
     setup_wifi();
     client.setServer(mqtt_server, mqtt_port);
     client.setCallback(callback);
@@ -108,21 +124,59 @@ void loop() {
                 return;
             }
         }
+        if(tfliteModel.getAnomalyPreditction(received_frame.dataPacket.data[0], received_frame.dataPacket.data[3], received_frame.dataPacket.data[2])){
+            Serial.println("Normal! Aggregating...");
+            heartRate.dataSum += received_frame.dataPacket.data[0];
+            spO2.dataSum += received_frame.dataPacket.data[1];
+            temperature.dataSum += received_frame.dataPacket.data[2];
+            accelerator.dataSum += received_frame.dataPacket.data[3];
+            dataCount++;
+            unsigned long currentMillis = millis();
+            if (currentMillis - previousMillis >= aggregationInterval) {
+                Serial.println("Aggregate completed! Sending...");
+                previousMillis = currentMillis;
+                received_frame.dataPacket.data[0] = heartRate.dataSum / dataCount;
+                received_frame.dataPacket.data[1] = spO2.dataSum / dataCount;
+                received_frame.dataPacket.data[2] = temperature.dataSum / dataCount;
+                received_frame.dataPacket.data[3] = accelerator.dataSum / dataCount;
 
-        transitionFrame(received_frame, &encrypted_frame);
+                resetData(&heartRate.dataSum);
+                resetData(&spO2.dataSum);
+                resetData(&temperature.dataSum);
+                resetData(&accelerator.dataSum);
+                resetData(&dataCount);
 
-        int result = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
-        if (result != 1) {
-            Serial.println("Encryption failed");
-        } else {
-            Serial.println("Encryption successful");
+                transitionFrame(received_frame, &encrypted_frame);
+                int result = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
+                switch(result){
+                    case 1: Serial.println("Encryption successful"); break;
+                    default: Serial.println("Encryption failed"); break;
+                }
+                if(handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
+                    publishFrame(encrypted_frame, dataTopic, clen);
+                }
+            }
+        }
+        else{
+            Serial.println("Anomaly Detected! Encrypt and update");
+            transitionFrame(received_frame, &encrypted_frame);
+            int result = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
+            switch(result){
+                case 1: Serial.println("Encryption successful"); break;
+                default: Serial.println("Encryption failed"); break;
+            }
+            resetData(&heartRate.dataSum);
+            resetData(&spO2.dataSum);
+            resetData(&temperature.dataSum);
+            resetData(&accelerator.dataSum);
+            resetData(&dataCount);
+            if(handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
+                publishFrame(encrypted_frame, dataTopic, clen);
+            }
         }
     } else {
         Serial.println("Handshake failed.");
         return;
-    }
-    if(handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
-        publishFrame(encrypted_frame, dataTopic, clen);
     }
 }
 

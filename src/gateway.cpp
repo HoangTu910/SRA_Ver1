@@ -4,8 +4,8 @@
 #include "handshake.h"
 
 // Network credentials
-const char* ssid = "The jade coffee 2_2.4G";
-const char* password = "caphengon";
+const char* ssid = "OWLCLUB";
+const char* password = "OwlclubUS";
 
 // MQTT Broker
 const int mqtt_port = 1883;

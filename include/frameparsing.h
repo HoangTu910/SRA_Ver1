@@ -55,4 +55,10 @@ int decryptDataPacket(Encrypt_Frame_t *en_frame);
 uint8_t reconstructDecryptedData(unsigned char *decryptedtext);
 uint8_t *hexToBinary(const char *hex, size_t hexLen, size_t *binaryLen);
 String serializeToJSON(Encrypt_Frame_t& frame, unsigned long long clen);
+template <typename anyInt>
+void resetData(anyInt *data){
+    *data = 0;
+}
 #endif
+
+
