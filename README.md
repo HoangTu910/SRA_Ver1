@@ -59,7 +59,7 @@ $ npm run dev
 
 In server of the system contain three main components: MQTT Broker, Socket and Backend (Data processing layer).
 
-![ảnh](https://github.com/user-attachments/assets/2d4e210d-2fff-4ef0-8728-4cd5e43e6965)
+![ảnh](https://github.com/user-attachments/assets/9360f04b-49e1-4b13-a975-3939d9d0d836)
 
 **1. MQTT Broker**
 
