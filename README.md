@@ -268,6 +268,7 @@ For decryption, the *child_process* library will be used. In backend server will
 
 - This model is the combination between Isolation Forest and Neural Networking.
 https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authuser=2
+- Update: https://colab.research.google.com/drive/1c952ZjT7fmXceqs8Ky71AchUXtXX2hHD#scrollTo=z4rtaHNyFuWY
 
 ### Define the specific conditions
 
