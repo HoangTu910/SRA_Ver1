@@ -141,7 +141,7 @@ The socket server was built for synchronize data between device and database. So
 ![ảnh](https://github.com/user-attachments/assets/2ed2b416-80ad-4646-bd9f-2253bd5d8975)
 
 **3. Encryption**
-* Plaintext will be XOR with the internal state to generate the ciphertext. Everytime it process a block, the internal state will be updated through some non-linear transformation.
+* Plaintext will be XOR with the internal state to generate the ciphertext using permutation function. Everytime it process a block, the internal state will be updated through some non-linear transformation.
 
 **4. Finalization**
 * The secret key will be XOR with internal state to make sure if any change in encryption process occur, it will affect to the final result. Finally, a 128-bit tag will be generated. The tag will be sent along with ciphertext to make sure data does not change in transmission process.
