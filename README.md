@@ -1,4 +1,4 @@
-# AIoT for Remote Healthcare System (Update 29/08/2024)
+# AIoT for Remote Healthcare System (Update 03/09/2024)
 
 ## General System
 
