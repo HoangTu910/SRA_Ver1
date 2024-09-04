@@ -76,6 +76,13 @@ When start the backend, it will connect to custom MQTT Broker by default usernam
 
 ![ảnh](https://github.com/user-attachments/assets/ca728bef-0499-481e-9106-b3f9ba61241e)
 
+**3. Socket**
+
+The socket server was built for synchronize data between device and database. Socket server provide a bidirectional communication channel between server and clients. This allows the server to send updates to the client in real-tome as data change occur in database, without continously poll the server for updates.
+
+![ảnh](https://github.com/user-attachments/assets/e605a493-b4d0-41da-82dd-b643e5e5b14b)
+
+
 **Authentication**: The backend handle the session of each user by verifying token. Make sure everytime user access to the dashboard, user need to login again to generate unique token. The image below display the result after finished authentication for user. It generated a unique token for each session. The user ID was console log to verify if the user is correctly login.
 
 ![ảnh](https://github.com/user-attachments/assets/2d2be85a-6d8b-4154-96b1-f8bf96f97c74)
