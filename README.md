@@ -128,8 +128,10 @@ The socket server was built for synchronize data between device and database. So
 2. Nonce: 128-bit
 3. Tag: 128-bit
 4. Asscociated Data: Optional
-5. Plaintext: Data need to be encrypted
-6. Ciphertext: Encrypted data
+5. pa: The number of rounds used during the initialization and finalization phases.
+6. pb: The number of rounds used during the processing of associated data and the actual data encryption or decryption.
+7. Plaintext: Data need to be encrypted
+8. Ciphertext: Encrypted data
 
 ### Encrypt Process
 **1. Initialization**
