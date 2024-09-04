@@ -9,7 +9,7 @@ Providing remote health monitoring solutions including multiple functions such a
 * Provides an interface to display health infomation.
 The system will focus on server management system, information security, optimize user interface and apply Artificial Intelligent. Implement basic device for collecting user data through sensor and process data in server.
 
-## Phase 1 - Getting Started
+## Phase 1 - Documentation Research
 - **Literature Overview**: Determine which system is appropriate.
 - **System Design**: Start to implement the overview system.
 - **Firebase reseacrh**: Research how to use Firebase for authenticating and data management.
