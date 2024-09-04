@@ -277,10 +277,14 @@ https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authus
 
 ## Implement model on ESP32 using Tensorflow Lite
 
-- The model has been successfully implemented on ESP32, the prediction is correct with the given data
-- A problem is Flash Memory consume 38.2% in total (the first implementation of gateway is 58.7%) so in total will be 96.6% (predict)
- 
-![ảnh](https://github.com/user-attachments/assets/f4667c1e-8d3d-4098-915e-2abcd9b59021)
+- The model has been successfully implemented on ESP32, the prediction is correct with the given data.
+- Total Flash memory is 60.4%.
+- A problem with WDT keep hard reset everytime finished a loop.
+
+![ảnh](https://github.com/user-attachments/assets/35a4f18f-42fd-4d81-87e3-d176281c6f92)
+
+![ảnh](https://github.com/user-attachments/assets/ff4882c8-d588-4252-a7f7-7dd0ffae5aec)
+
 
 ## Bechmark Cryptography
 - The tests below were run on an ESP32 Dev Module running at 240MHz base on running each algorithms 1000 times.
