@@ -56,7 +56,10 @@ $ npm run dev
 ## Phase 2: Server Implementation
 
 ### Server-side (Backend)
+
 In server of the system contain three main components: MQTT Broker, Socket and Backend (Data processing layer).
+
+![ảnh](https://github.com/user-attachments/assets/2d4e210d-2fff-4ef0-8728-4cd5e43e6965)
 
 **1. MQTT Broker**
 
