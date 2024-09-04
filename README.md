@@ -137,7 +137,7 @@ The socket server was built for synchronize data between device and database. So
 ![ảnh](https://github.com/user-attachments/assets/eaa189d2-a8fa-4c19-8643-4f156b5271a4)
 
 **2. Process Association Data**
-* The Association Data (AD) will be processed through multiple transformation (ascon_duplex()). After the process, a simple XOR operation will be use to prepare for the plaintext processing.
+* The Association Data (AD) will be processed through multiple transformation (ascon_duplex()). After the process, a simple XOR operation will be use to prepare for the plaintext processing. Protect from ciphertext tampering.
 ![ảnh](https://github.com/user-attachments/assets/2ed2b416-80ad-4646-bd9f-2253bd5d8975)
 
 **3. Encryption**
