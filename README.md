@@ -297,12 +297,20 @@ https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authus
 
 ![ảnh](https://github.com/user-attachments/assets/ff4882c8-d588-4252-a7f7-7dd0ffae5aec)
 
-
 ## Bechmark Cryptography
 - The tests below were run on an ESP32 Dev Module running at 240MHz base on running each algorithms 1000 times.
+
+### Parameters
+1. Time taken: Total time taken by the encryption algorithm to process the data in seconds.
+2. Clock cycles: Number of clock cycles the processor used to complete the encryption process. How efficiently the algorithm utilizes CPU resources.
+3. Throughput: Rate at which encryption algorithm processes data. THe higher throughput, the faster data processing in a given amount of time.
+4. Cycles per Byte: Average number of clock cycles needed to process one byte of data.
+5. Microsecond per Byte: Average time to process one byte of data.
+   
 ### Conclusion
 * AES still the best option for ESP32, it perform is outstanding compared to Chacha20 and Ascon-128a on ESP32.
 * Ascon-128a is perform better than Chacha20-Poly1305 in most of the time.
+  
 ### Table of Comparison
 ### Results for Block Size: 16 bytes
 
