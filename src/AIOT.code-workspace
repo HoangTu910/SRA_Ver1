@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"path": "../../Ascon"
+		},
+		{
+			"name": "TensorLite",
+			"path": ".."
+		},
+		{
+			"name": "Benchmark",
+			"path": "../../Benchmark"
+		},
+		{
+			"name": "Ver2",
+			"path": "../../Ver2"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"kiss_fft.h": "c",
+			"kiss_fftr.h": "c"
+		}
+	}
+}
