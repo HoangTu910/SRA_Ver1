@@ -108,6 +108,7 @@ The socket server was built for synchronize data between device and database. So
 * Dockerize the whole project (created into 4 seperate folder so don't know how to run it the same time).
 * Some handling function in frame construct and parsing process.
 * Project structure.
+* Upgrade ascon-128a
 ### Encryption process:
 **ESP32 Gateway sent**
 ![ảnh](https://github.com/user-attachments/assets/68cf7617-6ed2-445e-90b7-a91cf55cd861)
