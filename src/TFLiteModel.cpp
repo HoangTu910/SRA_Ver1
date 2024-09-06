@@ -76,7 +76,12 @@ bool TFLiteModel::PerformInference(float hr, float ac, float te, bool* res) {
     input->data.f[0] = hr;
     input->data.f[1] = ac;
     input->data.f[2] = te;
-
+    Serial.print("Data 1: ");
+    Serial.print(hr);
+    Serial.print(", Data 2: ");
+    Serial.print(ac);
+    Serial.print(", Data 3: ");
+    Serial.println(te);
     TF_LITE_ENSURE_STATUS(interpreter->Invoke());
 
     float anomaly_score = output->data.f[0];

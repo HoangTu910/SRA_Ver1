@@ -300,19 +300,24 @@ String serializeToJSON(Encrypt_Frame_t &frame, unsigned long long clen)
     return jsonString;
 }
 
-bool ParseFrameProcess(Frame_t *received_frame){
-    Serial.println("Handshake completed successfully!");
+bool ParseFrameProcess(Frame_t *received_frame) {
     Serial.println("Starting parsing frame...");
-    Serial.println("----------Received Frame---------");
-    if (Serial1.available() >= sizeof(Frame_t)) {
-        Serial1.readBytes((uint8_t*)received_frame, sizeof(Frame_t));
-        int result = parse_frame((uint8_t*)received_frame, sizeof(Frame_t));
-        if (result != 0) {
-            Serial.print("Failed to parse frame, error code: ");
-            Serial.println(result);
-            return false;
-        }
+    Serial.println("----------Waiting for Received Frame---------");
+    
+    while (Serial1.available() < sizeof(Frame_t)) {
+        delay(10);
     }
+    Serial1.readBytes((uint8_t*)received_frame, sizeof(Frame_t));
+    
+    int result = parse_frame((uint8_t*)received_frame, sizeof(Frame_t));
+    if (result != 0) {
+        Serial.print("Failed to parse frame, error code: ");
+        Serial.println(result);
+        return false;
+    }
+
+    Serial.println("Frame parsed successfully.");
     return true;
 }
+
 

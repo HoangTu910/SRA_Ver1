@@ -25,6 +25,7 @@ void AggregateData(dataToProcess* data, Frame_t* received_frame);
 void ProcessAverage(Frame_t* received_frame, dataToProcess* data, uint16_t &dataCount);
 bool IsFinishedAggregate(unsigned long* currentMillis, unsigned long* previousMillis, const long timeInterval);
 void ResetCompleteStruct(dataToProcess* metricsData);
+void ExecutePredictionModel(Frame_t &received_frame, bool *isAnomaly);
 
 void setup() {
     Serial.begin(AIOT_BAUD_RATE);  
@@ -34,7 +35,6 @@ void setup() {
     client.setCallback(callback);
     Serial1.begin(AIOT_BAUD_RATE, SERIAL_8N1, AIOT_TX, AIOT_RX); // Initialize UART1 with TX=16, RX=17
     Serial.println("ESP32 UART Receiver Initialized");
-    tfliteModel.Initialize();
 }
 
 void loop() {
@@ -43,20 +43,13 @@ void loop() {
     Encrypt_Frame_t encrypted_frame;
     bool isAnomaly = false;
     unsigned long long clen;
-    if (!client.connected()) {
-        Serial.println("MQTT client not connected, attempting to reconnect...");
-        reconnect();
-    } else {
-        client.loop();  
-    }
     Serial.println("----------Three way handshake---------");
     if (handshake.performHandshake(COMMAND_SYN, COMMAND_SYN_ACK, COMMAND_ACK)) {
         if(!ParseFrameProcess(&received_frame)) return;
+        //Setup model
         VerifyInterpreterReset();
-        tfliteModel.PerformInference(received_frame.dataPacket.data[HEART_RATE], 
-                                     received_frame.dataPacket.data[ACCELEROMETER], 
-                                     received_frame.dataPacket.data[TEMPERATURE], 
-                                     &isAnomaly);
+        ExecutePredictionModel(received_frame, &isAnomaly);
+
         if(!isAnomaly){
             Serial.println("Normal! Aggregating...");
             AggregateData(&metricsData, &received_frame);
@@ -64,8 +57,10 @@ void loop() {
             unsigned long currentMillis = millis();
             if (IsFinishedAggregate(&currentMillis, &previousMillis, aggregationInterval)) {
                 Serial.println("Aggregate completed! Sending...");
+
                 ProcessAverage(&received_frame, &metricsData, dataCount);
                 transitionFrame(received_frame, &encrypted_frame);
+
                 int encryptResult = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
                 if(encryptResult && handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
                     publishFrame(encrypted_frame, dataTopic, clen);
@@ -97,12 +92,10 @@ void test_ascon_encryption_decryption() {
     unsigned long long clen = 0;
     unsigned long long decrypted_len = 0;
 
-    // Encrypt the message
     crypto_aead_encrypt(ciphertext, &clen, plaintext, strlen((char *)plaintext), 
                         assoc_data, strlen((char *)assoc_data), 
                         NULL, nonce, key);
 
-    // Output the ciphertext
     Serial.print("Ciphertext: ");
     for (unsigned long long i = 0; i < clen; i++) {
         if (ciphertext[i] < 0x10) {
@@ -190,3 +183,10 @@ void ResetCompleteStruct(dataToProcess* metricsData){
     metricsData->temperature.dataSum = 0;
 }
 
+void ExecutePredictionModel(Frame_t &received_frame, bool* isAnomaly)
+{
+    tfliteModel.PerformInference(received_frame.dataPacket.data[HEART_RATE], 
+                                     received_frame.dataPacket.data[ACCELEROMETER], 
+                                     received_frame.dataPacket.data[TEMPERATURE], 
+                                     &*isAnomaly); //run model
+}
