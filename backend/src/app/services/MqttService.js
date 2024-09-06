@@ -1,5 +1,6 @@
-
 const mqtt = require('mqtt');
+const { execFile } = require('child_process');
+const path = require('path');
 const DeviceDataService = require('./DeviceDataService');
 
 const brokerUrl = 'mqtt://localhost:1883';
@@ -19,6 +20,34 @@ let handshakeState = {
     initiated: false,
     completed: false,
 };
+
+const decryptData = (encryptedData, nonce, key) => {
+    return new Promise((resolve, reject) => {
+        const binaryPath = path.join(__dirname, '../cryptography/src/decrypt_binary');
+        
+        // Convert inputs to hex strings
+        const encryptedHex = Buffer.from(encryptedData).toString('hex');
+        const nonceHex = Buffer.from(nonce).toString('hex');
+        const keyHex = Buffer.from(key).toString('hex');
+        
+        const args = [encryptedHex, nonceHex, keyHex];
+
+        execFile(binaryPath, args, { env: { LD_LIBRARY_PATH: path.join(__dirname, '../cryptography/src') } }, (error, stdout, stderr) => {
+            if (error) {
+                console.error('Error executing binary:', error);
+                console.error('Standard Error Output:', stderr);
+                return reject(error);
+            }
+            console.log('Standard Output:', stdout); // Log the output
+            const lines = stdout.split('\n');
+            const hexDataLine = lines[1]; // Assuming the hex data is in the second line
+            const hexValues = hexDataLine.trim().split(' ').filter(v => v.length > 0); // Split and filter empty strings
+            const hexString = hexValues.join(''); // Join them into a single string
+            resolve(Buffer.from(hexString, 'hex')); 
+        });
+    });
+};
+
 
 const encodedPassword = Buffer.from('123').toString('base64');
 console.log(`Encoded Password: ${encodedPassword}`); 
@@ -126,6 +155,15 @@ function initMQTT() {
                 // console.log(`Temperature: ${data.temperature}`);
                 // console.log(`Device ID: ${data.id_device.toString()}`);
                 console.log('Data: ', data);
+                const encryptDataBuffer = Buffer.from(data.dataEncrypted);
+                const nonce = Buffer.from(data.nonce);
+                const key = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]);
+
+                const decryptedData = await decryptData(encryptDataBuffer, nonce, key);
+                console.log('Decrypted Data Length: ', decryptedData.length);
+                console.log('Decrypted Data Buffer: ', decryptedData);
+                console.log('Decrypted Data (Hex): ', decryptedData.toString('hex'));
+                
                 // Write data to Firestore
                 //await DeviceDataService.createDeviceData(data, deviceId);
                 const endTime = Date.now();

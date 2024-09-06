@@ -1,4 +1,4 @@
 # Ignore Google Cloud service account credentials
 backend/src/config/central-cloud-for-aiot-firebase-adminsdk-beycw-c3f8f3a152.json
 socket/central-cloud-for-aiot-firebase-adminsdk-beycw-c3f8f3a152.json
-frontend/admin/src/config
+frontend/admin/src/config/central-cloud-for-aiot-firebase-adminsdk-beycw-c3f8f3a152.json
