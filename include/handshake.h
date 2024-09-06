@@ -3,6 +3,10 @@
 #include <Arduino.h>
 #include "gateway.h"
 
+#ifdef DEFAULT
+#undef DEFAULT
+#endif
+
 #define COMMAND_SYN 0x01
 #define COMMAND_SYN_ACK 0x02
 #define COMMAND_ACK 0x03

@@ -1,29 +1,38 @@
-#ifndef TFLITEMODEL_H
-#define TFLITEMODEL_H
+#ifndef TFLITE_MODEL_H
+#define TFLITE_MODEL_H
 
-#include "tensorflow/lite/micro/all_ops_resolver.h"
-#include "tensorflow/lite/micro/micro_error_reporter.h"
-#include "tensorflow/lite/micro/micro_interpreter.h"
-#include "tensorflow/lite/micro/system_setup.h"
-#include "tensorflow/lite/schema/schema_generated.h"
-#include "model.h" 
+#include <tensorflow/lite/micro/micro_interpreter.h>
+#include <tensorflow/lite/schema/schema_generated.h>
+#include <tensorflow/lite/micro/kernels/micro_ops.h> // Include for built-in micro operators
+#include <tensorflow/lite/micro/micro_mutable_op_resolver.h>
+#include <tensorflow/lite/version.h>
+#include <tensorflow/lite/micro/micro_error_reporter.h>
+
+
+#ifdef DEFAULT
+#undef DEFAULT
+#endif
 
 class TFLiteModel {
 public:
     TFLiteModel();
-    void setup();
-    bool getAnomalyPreditction(float v1, float v2, float v3);
-private:
-    tflite::MicroErrorReporter* error_reporter;
-    const tflite::Model *model;
+    bool Initialize();
+    void Cleanup();
+    bool PerformInference(float hr, float ac, float te, bool* res);
+    bool Interpreter();
     tflite::MicroInterpreter* interpreter;
+private:
+    void LoadModel();
+    void RegisterOPS();
+    using AnomalyDetectionOpResolver = tflite::MicroMutableOpResolver<1>;
+    AnomalyDetectionOpResolver op_resolver;
+    TfLiteStatus RegisterOps(AnomalyDetectionOpResolver& op_resolver);
+    static constexpr int kTensorArenaSize = 10 * 1024; // 10KB
+    alignas(16) uint8_t tensor_arena[kTensorArenaSize];
+    tflite::MicroErrorReporter error_reporter;
+    const tflite::Model* model;
     TfLiteTensor* input;
     TfLiteTensor* output;
-
-    bool initializeErrorReporting();
-    bool loadModel();
-    bool initializeInterpreter();
-    bool allocateTensors();
 };
 
-#endif
+#endif // TFLITE_MODEL_H

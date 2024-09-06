@@ -1,75 +1,133 @@
-#include "TFLiteModel.h"
+#include <Arduino.h>
 
-TFLiteModel::TFLiteModel() : error_reporter(nullptr), model(nullptr), interpreter(nullptr), input(nullptr), output(nullptr) {}
+// Undefine the DEFAULT macro to avoid conflicts
+#ifdef DEFAULT
+#undef DEFAULT
+#endif
+
+#include <tensorflow/lite/micro/micro_interpreter.h>
+#include <tensorflow/lite/schema/schema_generated.h>
+#include <tensorflow/lite/micro/kernels/micro_ops.h> // Include for built-in micro operators
+#include <tensorflow/lite/micro/micro_mutable_op_resolver.h>
+#include <tensorflow/lite/version.h>
+#include <tensorflow/lite/micro/micro_error_reporter.h>
+#include "TFLiteModel.h"
+#include "model.h" // Include your model header
 
 namespace {
-    tflite::ErrorReporter* error_reporter = nullptr;
-    const tflite::Model* model = nullptr;
-    tflite::MicroInterpreter* interpreter = nullptr;
-    TfLiteTensor* input = nullptr;
-    TfLiteTensor* output = nullptr;
-    constexpr int kTensorArenaSize = 2000;
-    uint8_t tensor_arena[kTensorArenaSize];
+constexpr int kTensorArenaSize = 20 * 1024; // 10KB
+uint8_t tensor_arena[kTensorArenaSize];
+} // namespace
+
+TFLiteModel::TFLiteModel() : model(nullptr), interpreter(nullptr), input(nullptr), output(nullptr) {}
+
+TfLiteStatus TFLiteModel::RegisterOps(AnomalyDetectionOpResolver& op_resolver) {
+    TF_LITE_ENSURE_STATUS(op_resolver.AddFullyConnected());
+    // Add other operators if needed
+    return kTfLiteOk;
 }
 
-void TFLiteModel::setup()
+bool TFLiteModel::Initialize() {
+    this->LoadModel();
+    this->RegisterOPS();
+    if (!this->Interpreter()) {
+        Serial.println("Failed to setup interpreter.");
+        return false;
+    }
+    Serial.println("Setup model completed!");
+    return true;
+    // model = tflite::GetModel(anomaly_detection_model_tflite);
+    // if (model == nullptr || model->version() != TFLITE_SCHEMA_VERSION) {
+    //     Serial.println("Failed to load model or version mismatch");
+    //     return false;
+    // }
+
+    // AnomalyDetectionOpResolver op_resolver;
+    // if (RegisterOps(op_resolver) != kTfLiteOk) {
+    //     Serial.println("Failed to register operators");
+    //     return false;
+    // }
+
+    // interpreter = new tflite::MicroInterpreter(model, op_resolver, tensor_arena, kTensorArenaSize, &error_reporter);
+    // if (interpreter == nullptr) {
+    //     Serial.println("Failed to create interpreter");
+    //     return false;
+    // }
+
+    // if (interpreter->AllocateTensors() != kTfLiteOk) {
+    //     Serial.println("Failed to allocate tensors");
+    //     return false;
+    // }
+
+    // input = interpreter->input(0);
+    // output = interpreter->output(0);
+
+    // // Serial.printf("Input tensor size: %d bytes\n", input->bytes);
+    // // Serial.printf("Output tensor size: %d bytes\n", output->bytes);
+
+    // return true;
+}
+
+void TFLiteModel::Cleanup() {
+    if (interpreter != nullptr) {
+        delete interpreter;
+        interpreter = nullptr;
+    }
+}
+
+bool TFLiteModel::PerformInference(float hr, float ac, float te, bool* res) {
+    input->data.f[0] = hr;
+    input->data.f[1] = ac;
+    input->data.f[2] = te;
+
+    TF_LITE_ENSURE_STATUS(interpreter->Invoke());
+
+    float anomaly_score = output->data.f[0];
+    Serial.print("Anomaly Score: ");
+    Serial.println(anomaly_score);
+    if (anomaly_score > 0.5) {
+        Serial.println("Anomaly detected!");
+        *res = true;
+    } else {
+        Serial.println("No anomaly detected.");
+        *res = false;
+    }
+
+    return true;
+}
+
+bool TFLiteModel::Interpreter()
 {
-    if (!initializeErrorReporting()) return;
-    if (!loadModel()) return;
-    if (!initializeInterpreter()) return;
-    if (!allocateTensors()) return;
+    interpreter = new tflite::MicroInterpreter(model, op_resolver, tensor_arena, kTensorArenaSize, &error_reporter);
+    if (interpreter == nullptr) {
+        Serial.println("Failed to create interpreter");
+        return false;
+    }
+
+    if (interpreter->AllocateTensors() != kTfLiteOk) {
+        Serial.println("Failed to allocate tensors");
+        return false;
+    }
 
     input = interpreter->input(0);
     output = interpreter->output(0);
-}
 
-bool TFLiteModel::initializeErrorReporting()
-{
-    static tflite::MicroErrorReporter micro_error_reporter;
-    error_reporter = &micro_error_reporter;
-    return true; 
-}
-
-bool TFLiteModel::loadModel()
-{
-    model = tflite::GetModel(g_model);
-    if (model->version() != TFLITE_SCHEMA_VERSION) {
-        TF_LITE_REPORT_ERROR(error_reporter, "Model version mismatch.");
-        return false;
-    }
     return true;
 }
 
-bool TFLiteModel::initializeInterpreter()
+void TFLiteModel::LoadModel()
 {
-    static tflite::AllOpsResolver resolver;
-    static tflite::MicroInterpreter static_interpreter(
-        model, resolver, tensor_arena, kTensorArenaSize, error_reporter);
-    interpreter = &static_interpreter;
-    return true;
+    model = tflite::GetModel(anomaly_detection_model_tflite);
+    if (model == nullptr || model->version() != TFLITE_SCHEMA_VERSION) {
+        Serial.println("Failed to load model or version mismatch");
+        return;
+    }
 }
 
-bool TFLiteModel::allocateTensors()
+void TFLiteModel::RegisterOPS()
 {
-    TfLiteStatus allocate_status = interpreter->AllocateTensors();
-    if (allocate_status != kTfLiteOk) {
-        TF_LITE_REPORT_ERROR(error_reporter, "AllocateTensors() failed");
-        return false;
+    if (RegisterOps(op_resolver) != kTfLiteOk) {
+        Serial.println("Failed to register operators");
+        return;
     }
-    return true;
-}
-
-bool TFLiteModel::getAnomalyPreditction(float v1, float v2, float v3)
-{
-    input->data.f[0] = v1;
-    input->data.f[1] = v2;
-    input->data.f[2] = v3;
-
-    if (interpreter->Invoke() != kTfLiteOk) {
-        TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed");
-        return false;
-    }
-    float anomaly_prediction = output->data.f[0];
-    if(anomaly_prediction > 0.5) return true;
-    else false;
 }

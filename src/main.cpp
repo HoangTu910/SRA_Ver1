@@ -1,4 +1,3 @@
-#include <TensorFlowLite_ESP32.h>
 #include "core.h"
 #include "encrypt.h"
 #include "decrypt.h"
@@ -10,6 +9,10 @@
 #include <string.h>
 #include <Arduino.h>
 #include <PubSubClient.h>
+
+#ifdef DEFAULT
+#undef DEFAULT
+#endif
 
 int clenForTrans;
 TFLiteModel tfliteModel;
@@ -86,14 +89,15 @@ void test_ascon_encryption_decryption() {
 ThreeWayHandshake handshake(Serial1, 5000);
 
 void setup() {
-    Serial.begin(9600);  
-    tfliteModel.setup();
+    Serial.begin(115200);  
+    tfliteModel.Initialize();
     setup_wifi();
     client.setServer(mqtt_server, mqtt_port);
     client.setCallback(callback);
     Serial1.begin(115200, SERIAL_8N1, 16, 17); // Initialize UART1 with TX=16, RX=17
     Serial.println("ESP32 UART Receiver Initialized");
     // test_ascon_encryption_decryption();
+    tfliteModel.Initialize();
 }
 
 void loop() {
@@ -124,7 +128,17 @@ void loop() {
                 return;
             }
         }
-        if(tfliteModel.getAnomalyPreditction(received_frame.dataPacket.data[0], received_frame.dataPacket.data[3], received_frame.dataPacket.data[2])){
+        bool isAnomaly = false;
+        //tfliteModel.Cleanup();
+        if (tfliteModel.interpreter == nullptr) {
+            Serial.println("Re-initializing interpreter...");
+            if (!tfliteModel.Initialize()) {
+                Serial.println("Failed to re-setup interpreter.");
+                return;
+            }
+        }
+        tfliteModel.PerformInference(float(received_frame.dataPacket.data[0]), float(received_frame.dataPacket.data[3]), float(received_frame.dataPacket.data[2]), &isAnomaly);
+        if(!isAnomaly){
             Serial.println("Normal! Aggregating...");
             heartRate.dataSum += received_frame.dataPacket.data[0];
             spO2.dataSum += received_frame.dataPacket.data[1];
