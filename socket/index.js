@@ -147,8 +147,8 @@ wss.on('connection', (ws) => {
         unsubscribe = deviceDocRef.onSnapshot((doc) => {
           if (doc.exists) {
             const data = doc.data();
-            const { heart_rate, spO2, temperature } = data;
-            const payload = { heart_rate, spO2, temperature };
+            const { heart_rate, spO2, temperature, acceleration } = data;
+            const payload = { heart_rate, spO2, temperature, acceleration };
             ws.send(JSON.stringify(payload));
           } else {
             console.log('No such document!');

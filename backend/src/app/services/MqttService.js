@@ -21,6 +21,56 @@ let handshakeState = {
     completed: false,
 };
 
+function reconstructDecryptedData(decryptedtext) {
+    if (!decryptedtext) {
+        console.log("Error: Input is null or undefined.");
+        return { error: true }; // Return an error object if the input is null or undefined
+    }
+
+    //console.log("Decrypted text received: ", decryptedtext);
+
+    let deviceId = "";
+    for (let i = 0; i < 32; i++) {
+        if (decryptedtext[i] === 0) break;
+        deviceId += String.fromCharCode(decryptedtext[i]);
+    }
+    //console.log("Extracted Device ID: ", deviceId);
+
+    let deviceLen = decryptedtext[32];
+    //console.log("Extracted Device Length: ", deviceLen);
+
+    let dataLen = decryptedtext[33];
+    //console.log("Extracted Data Length: ", dataLen);
+
+    let result = {
+        deviceId: deviceId,
+        deviceLen: deviceLen,
+        dataLen: dataLen
+    };
+
+    if (dataLen >= 4) {
+        let heartRate = decryptedtext[35];
+        let spO2 = decryptedtext[36];
+        let temperature = decryptedtext[37];
+        let acceleration = decryptedtext[38];
+        result.heartRate = heartRate;
+        result.spO2 = spO2;
+        result.temperature = temperature;
+        result.acceleration = acceleration;
+        // console.log("Extracted Heart Rate: ", heartRate);
+        // console.log("Extracted SpO2: ", spO2);
+        // console.log("Extracted Temperature: ", temperature);
+    } else {
+        result.error = "Insufficient data length to extract health metrics.";
+        console.log("Error: Insufficient data length to extract health metrics.");
+    }
+
+    console.log("Final result: ", result);
+    return result;
+}
+
+
+
 const decryptData = (encryptedData, nonce, key) => {
     return new Promise((resolve, reject) => {
         const binaryPath = path.join(__dirname, '../cryptography/src/decrypt_binary');
@@ -38,12 +88,18 @@ const decryptData = (encryptedData, nonce, key) => {
                 console.error('Standard Error Output:', stderr);
                 return reject(error);
             }
-            console.log('Standard Output:', stdout); // Log the output
-            const lines = stdout.split('\n');
-            const hexDataLine = lines[1]; // Assuming the hex data is in the second line
-            const hexValues = hexDataLine.trim().split(' ').filter(v => v.length > 0); // Split and filter empty strings
-            const hexString = hexValues.join(''); // Join them into a single string
-            resolve(Buffer.from(hexString, 'hex')); 
+            console.log('Standard Output:', stdout); 
+            const lines = stdout.trim().split('\n');
+            const decryptionCompletedCheckLine = lines[0];
+            const decryptedDataLine = lines[1];
+
+            if (decryptionCompletedCheckLine.includes("Decryption completed check:")) {
+                const decryptedHex = decryptedDataLine.trim().split(' ').map(h => parseInt(h, 16));
+                const decryptedBuffer = Buffer.from(decryptedHex);
+                resolve(decryptedBuffer);
+            } else {
+                reject(new Error('Decryption failed'));
+            } 
         });
     });
 };
@@ -145,27 +201,30 @@ function initMQTT() {
             }
         } else if (topic === 'sensors/data') {
             try {
-                // const topicParts = topic.split('/');
-                // const deviceId = topicParts[1];
                 const data = JSON.parse(message.toString());
-                // console.log('Data: ', data);
-                // console.log(`Received data on topic ${topic}:`);
-                // console.log(`Heart Rate: ${data.heart_rate}`);
-                // console.log(`SpO2: ${data.spO2}`);
-                // console.log(`Temperature: ${data.temperature}`);
-                // console.log(`Device ID: ${data.id_device.toString()}`);
                 console.log('Data: ', data);
                 const encryptDataBuffer = Buffer.from(data.dataEncrypted);
                 const nonce = Buffer.from(data.nonce);
                 const key = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]);
 
                 const decryptedData = await decryptData(encryptDataBuffer, nonce, key);
-                console.log('Decrypted Data Length: ', decryptedData.length);
-                console.log('Decrypted Data Buffer: ', decryptedData);
+                // console.log('Decrypted Data Length: ', decryptedData.length);
+                // console.log('Decrypted Data Buffer: ', decryptedData);
                 console.log('Decrypted Data (Hex): ', decryptedData.toString('hex'));
-                
+                const result = reconstructDecryptedData(decryptedData);
+                console.log('Device ID: ', result.deviceId);
+                console.log('Heart Rate: ', result.heartRate);
+                console.log('Temperature: ', result.temperature);
+                console.log('SPO2: ', result.spO2);
                 // Write data to Firestore
-                //await DeviceDataService.createDeviceData(data, deviceId);
+                const uploadData = {
+                    heart_rate: result.heartRate,
+                    temperature: result.temperature,
+                    spO2: result.spO2,
+                    acceleration: result.acceleration
+                };
+                
+                await DeviceDataService.createDeviceData(uploadData, result.deviceId);
                 const endTime = Date.now();
                 console.log(`Processed message in ${endTime - startTime}ms`);
             } catch (e) {

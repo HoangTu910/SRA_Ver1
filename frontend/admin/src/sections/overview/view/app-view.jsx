@@ -84,10 +84,13 @@ export default function AppView() {
 
   //   return () => clearInterval(intervalId);
   // }, []);
-  const [metrics, setMetrics] = useState({ heart_rate: null, spO2: null, temperature: null });
+  const [metrics, setMetrics] = useState({ heart_rate: null, spO2: null, temperature: null, acceleration: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [heartRateQueue, setHeartRateQueue] = useState([0]);
+  const [heartRateQueue, setHeartRateQueue] = useState([]);
+  const [bloodPressureQueue, setBloodPressureQueue] = useState([]);
+  const [bodyTemperatureQueue, setBodyTemperatureQueue] = useState([]);
+  const [timeLabels, setTimeLabels] = useState([]);
   useEffect(() => {
     const fetchDataAndSetupWebSocket = async () => {
       try {
@@ -129,16 +132,59 @@ export default function AppView() {
           setMetrics({
             heart_rate: data.heart_rate,
             spO2: data.spO2,
-            temperature: data.temperature
+            temperature: data.temperature,
+            acceleration: data.acceleration
           });
 
           // Update heart rate queue
-          const newqueue = heartRateQueue;
-          if(newqueue.length >= 11)
-              newqueue.shift();
-          newqueue.push(data.heart_rate);
-          console.log(newqueue);
-          setHeartRateQueue(newqueue);
+          // const newqueue = heartRateQueue;
+          // if(newqueue.length >= 11)
+          //     newqueue.shift();
+          // const newqueue = heartRateQueue;
+          setHeartRateQueue(prevQueue => {
+            const newQueue = [...prevQueue];  // Create a copy of the existing queue
+            if (newQueue.length >= 11) {
+              newQueue.shift();  // Remove the oldest value
+            }
+            newQueue.push(data.heart_rate);  // Add the new heart rate
+            return newQueue;
+          });
+
+          setBloodPressureQueue(prevQueue => {
+            const newQueue = [...prevQueue];  // Create a copy of the existing queue
+            if (newQueue.length >= 11) {
+              newQueue.shift();  // Remove the oldest value
+            }
+            newQueue.push(data.spO2);  // Add the new heart rate
+            return newQueue;
+          });
+
+          setBodyTemperatureQueue(prevQueue => {
+            const newQueue = [...prevQueue];  // Create a copy of the existing queue
+            if (newQueue.length >= 11) {
+              newQueue.shift();  // Remove the oldest value
+            }
+            newQueue.push(data.temperature);  // Add the new heart rate
+            return newQueue;
+          });
+          setTimeLabels(prevQueue => {
+            const newQueue = [...prevQueue];  // Tạo một bản sao của hàng đợi hiện tại
+            if (newQueue.length >= 11) {
+              return newQueue;
+            }
+            if(newQueue.length === 0){
+              newQueue.push(5);
+            }
+            else
+              newQueue.push(newQueue[newQueue.length - 1] + 5);  // Thêm thời gian hiện tại tính bằng giây
+            console.log(newQueue);
+            return newQueue;
+          });
+          // if(heartRateQueue.length >= 11)
+          //   heartRateQueue.shift();
+          // heartRateQueue.push(data.heart_rate);
+          // // console.log(newqueue);
+          // setHeartRateQueue(heartRateQueue);
           console.log(heartRateQueue);
           // ApexCharts(document.querySelector("#chart"), chartOptions).;
           // setHeartRateQueue(newq => {
@@ -235,32 +281,20 @@ export default function AppView() {
         <Grid xs={12} sm={6} md={3}>
           <AppWidgetSummary
             sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
-            title="Blood Pressure"
-            total={141/90}
+            title="Accelerator"
+            total={metrics.acceleration ?? 0}
             color="error"
             icon={<img alt="icon" style={{ width: '50px', height: '50px' }} src="/assets/icons/glass/Blood.png" />}
           />
         </Grid>
 
-        <Grid xs={12} md={6} lg={8} id = "chartt">
+        <Grid xs={12} md={6} lg={8} >
           <AppWebsiteVisits
             sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
             title="Data Record"
             subheader="Per hours"
             chart={{
-              labels: [
-                '01/01/2003',
-                '02/01/2003',
-                '03/01/2003',
-                '04/01/2003',
-                '05/01/2003',
-                '06/01/2003',
-                '07/01/2003',
-                '08/01/2003',
-                '09/01/2003',
-                '10/01/2003',
-                '11/01/2003',
-              ],
+              labels: timeLabels,
               series: [
                 {
                   name: 'Heart Rate',
@@ -272,13 +306,13 @@ export default function AppView() {
                   name: 'Blood Pressure',
                   type: 'area',
                   fill: 'gradient',
-                  data: [44, 55, 41, 67, 22, 43, 21, 41, 56, 27, 43],
+                  data: bloodPressureQueue,
                 },
                 {
                   name: 'Body Temperature',
                   type: 'line',
                   fill: 'solid',
-                  data: [30, 25, 36, 30, 45, 35, 64, 52, 59, 36, 39],
+                  data: bodyTemperatureQueue,
                 },
               ],
             }}
@@ -296,6 +330,14 @@ export default function AppView() {
                 { label: 'Europe', value: 1443 },
                 { label: 'Africa', value: 4443 },
               ],
+              xaxis: {
+                type: 'category', // Sử dụng 'category' để giữ lại định dạng như hiện tại
+                labels: {
+                  formatter: function (val) {
+                    return `${val}s`; // Định dạng lại nhãn trục x thành giây
+                  },
+                },
+              },
             }}
           />
         </Grid>
