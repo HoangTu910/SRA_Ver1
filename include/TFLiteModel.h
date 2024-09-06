@@ -23,8 +23,8 @@ public:
     tflite::MicroInterpreter* interpreter;
 private:
     void LoadModel();
-    void RegisterOPS();
-    using AnomalyDetectionOpResolver = tflite::MicroMutableOpResolver<1>;
+    using AnomalyDetectionOpResolver = tflite::MicroMutableOpResolver<2>;
+    void RegisterOPS(AnomalyDetectionOpResolver& op_resolver);
     AnomalyDetectionOpResolver op_resolver;
     TfLiteStatus RegisterOps(AnomalyDetectionOpResolver& op_resolver);
     static constexpr int kTensorArenaSize = 10 * 1024; // 10KB

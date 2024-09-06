@@ -59,6 +59,8 @@ template <typename anyInt>
 void resetData(anyInt *data){
     *data = 0;
 }
+void TFLiteModeProcessAnomaly(Frame_t *frame);
+bool ParseFrameProcess(Frame_t *frame);
 #endif
 
 

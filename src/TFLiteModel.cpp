@@ -14,22 +14,19 @@
 #include "TFLiteModel.h"
 #include "model.h" // Include your model header
 
-namespace {
 constexpr int kTensorArenaSize = 20 * 1024; // 10KB
 uint8_t tensor_arena[kTensorArenaSize];
-} // namespace
-
 TFLiteModel::TFLiteModel() : model(nullptr), interpreter(nullptr), input(nullptr), output(nullptr) {}
 
 TfLiteStatus TFLiteModel::RegisterOps(AnomalyDetectionOpResolver& op_resolver) {
     TF_LITE_ENSURE_STATUS(op_resolver.AddFullyConnected());
-    // Add other operators if needed
+    TF_LITE_ENSURE_STATUS(op_resolver.AddRelu());
     return kTfLiteOk;
 }
 
 bool TFLiteModel::Initialize() {
     this->LoadModel();
-    this->RegisterOPS();
+    this->RegisterOPS(this->op_resolver);
     if (!this->Interpreter()) {
         Serial.println("Failed to setup interpreter.");
         return false;
@@ -86,10 +83,10 @@ bool TFLiteModel::PerformInference(float hr, float ac, float te, bool* res) {
     Serial.print("Anomaly Score: ");
     Serial.println(anomaly_score);
     if (anomaly_score > 0.5) {
-        Serial.println("Anomaly detected!");
+        //Serial.println("Anomaly detected!");
         *res = true;
     } else {
-        Serial.println("No anomaly detected.");
+        //Serial.println("No anomaly detected.");
         *res = false;
     }
 
@@ -124,10 +121,11 @@ void TFLiteModel::LoadModel()
     }
 }
 
-void TFLiteModel::RegisterOPS()
+void TFLiteModel::RegisterOPS(AnomalyDetectionOpResolver& op_resolver)
 {
     if (RegisterOps(op_resolver) != kTfLiteOk) {
         Serial.println("Failed to register operators");
         return;
     }
+    Serial.println("Registered operators!");
 }

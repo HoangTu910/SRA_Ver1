@@ -113,12 +113,12 @@ uint8_t transitionFrame(Frame_t frame, Encrypt_Frame_t *en_frame)
 int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame, unsigned long long* getLen)
 {
     unsigned char *dataPacket = (unsigned char *)&frame->dataPacket;
-    Serial.print("Data Log: ");
-    for (size_t i = 0; i < sizeof(frame->dataPacket); i++) {
-        Serial.print(dataPacket[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
+    // Serial.print("Data Log: ");
+    // for (size_t i = 0; i < sizeof(frame->dataPacket); i++) {
+    //     Serial.print(dataPacket[i], HEX);
+    //     Serial.print(" ");
+    // }
+    // Serial.println();
 
     size_t dataPacketLen = sizeof(frame->dataPacket);
     unsigned char ciphertext[dataPacketLen + CRYPTO_ABYTES];  
@@ -136,7 +136,7 @@ int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame, unsigned long l
         Serial.println("Encryption failed!");
         return ret;
     }
-
+    Serial.println("Encryption success!");
     Serial.print("Encrypted Data: ");
     for (size_t i = 0; i < ciphertextLen; i++) {
         Serial.print(ciphertext[i], HEX);
@@ -158,7 +158,6 @@ int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame, unsigned long l
         if (decrypted_len < sizeof(decryptedtext)) {
             decryptedtext[decrypted_len] = '\0';
         }
-        
         Serial.print("Decrypted text: ");
         for (unsigned long long i = 0; i < decrypted_len; i++) {
             Serial.print(decryptedtext[i], HEX);
@@ -278,16 +277,15 @@ String serializeToJSON(Encrypt_Frame_t &frame, unsigned long long clen)
     }
 
     // Printing the data array in HEX format
-    Serial.print("Data Array: ");
-    for (int i = 0; i < dataArray.size(); ++i) {
-        int value = dataArray[i];
-        char hexValue[3];
-        snprintf(hexValue, sizeof(hexValue), "%02X", value); // Convert the integer to a hex string
-        Serial.print(hexValue);  // Print the hex string
-        Serial.print(" ");    // Add a space for readability
-    }
-
-    Serial.println(); 
+    // Serial.print("Data Array: ");
+    // for (int i = 0; i < dataArray.size(); ++i) {
+    //     int value = dataArray[i];
+    //     char hexValue[3];
+    //     snprintf(hexValue, sizeof(hexValue), "%02X", value); // Convert the integer to a hex string
+    //     Serial.print(hexValue);  // Print the hex string
+    //     Serial.print(" ");    // Add a space for readability
+    // }
+    //Serial.println(); 
     
     doc["t1"] = frame.t1;
     doc["t2"] = frame.t2;
@@ -300,5 +298,21 @@ String serializeToJSON(Encrypt_Frame_t &frame, unsigned long long clen)
     String jsonString;
     serializeJson(doc, jsonString);
     return jsonString;
+}
+
+bool ParseFrameProcess(Frame_t *received_frame){
+    Serial.println("Handshake completed successfully!");
+    Serial.println("Starting parsing frame...");
+    Serial.println("----------Received Frame---------");
+    if (Serial1.available() >= sizeof(Frame_t)) {
+        Serial1.readBytes((uint8_t*)received_frame, sizeof(Frame_t));
+        int result = parse_frame((uint8_t*)received_frame, sizeof(Frame_t));
+        if (result != 0) {
+            Serial.print("Failed to parse frame, error code: ");
+            Serial.println(result);
+            return false;
+        }
+    }
+    return true;
 }
 

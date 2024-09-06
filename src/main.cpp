@@ -5,6 +5,7 @@
 #include "handshake.h"
 #include "gateway.h"
 #include "TFLiteModel.h"
+#include "default.h"
 #include <stdio.h>
 #include <string.h>
 #include <Arduino.h>
@@ -16,18 +17,75 @@
 
 int clenForTrans;
 TFLiteModel tfliteModel;
+ThreeWayHandshake handshake(Serial1, 5000);
 
-typedef struct{
-    uint16_t dataSum = 0;
-    uint16_t dataMin = UINT16_MAX;
-    uint16_t dataMax = 0;
-} aggregateData;
+void test_ascon_encryption_decryption();
+void VerifyInterpreterReset();
+void AggregateData(dataToProcess* data, Frame_t* received_frame);
+void ProcessAverage(Frame_t* received_frame, dataToProcess* data, uint16_t &dataCount);
+bool IsFinishedAggregate(unsigned long* currentMillis, unsigned long* previousMillis, const long timeInterval);
+void ResetCompleteStruct(dataToProcess* metricsData);
 
-unsigned long previousMillis = 0;
-const long aggregationInterval = 30000; 
-uint16_t dataCount = 0;
+void setup() {
+    Serial.begin(AIOT_BAUD_RATE);  
+    tfliteModel.Initialize();
+    setup_wifi();
+    client.setServer(mqtt_server, mqtt_port);
+    client.setCallback(callback);
+    Serial1.begin(AIOT_BAUD_RATE, SERIAL_8N1, AIOT_TX, AIOT_RX); // Initialize UART1 with TX=16, RX=17
+    Serial.println("ESP32 UART Receiver Initialized");
+    tfliteModel.Initialize();
+}
 
-aggregateData heartRate, temperature, accelerator, spO2;
+void loop() {
+    mqtt_setup();
+    Frame_t received_frame;
+    Encrypt_Frame_t encrypted_frame;
+    bool isAnomaly = false;
+    unsigned long long clen;
+    if (!client.connected()) {
+        Serial.println("MQTT client not connected, attempting to reconnect...");
+        reconnect();
+    } else {
+        client.loop();  
+    }
+    Serial.println("----------Three way handshake---------");
+    if (handshake.performHandshake(COMMAND_SYN, COMMAND_SYN_ACK, COMMAND_ACK)) {
+        if(!ParseFrameProcess(&received_frame)) return;
+        VerifyInterpreterReset();
+        tfliteModel.PerformInference(received_frame.dataPacket.data[HEART_RATE], 
+                                     received_frame.dataPacket.data[ACCELEROMETER], 
+                                     received_frame.dataPacket.data[TEMPERATURE], 
+                                     &isAnomaly);
+        if(!isAnomaly){
+            Serial.println("Normal! Aggregating...");
+            AggregateData(&metricsData, &received_frame);
+            dataCount++;
+            unsigned long currentMillis = millis();
+            if (IsFinishedAggregate(&currentMillis, &previousMillis, aggregationInterval)) {
+                Serial.println("Aggregate completed! Sending...");
+                ProcessAverage(&received_frame, &metricsData, dataCount);
+                transitionFrame(received_frame, &encrypted_frame);
+                int encryptResult = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
+                if(encryptResult && handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
+                    publishFrame(encrypted_frame, dataTopic, clen);
+                }
+            }
+        } else{
+            Serial.println("Anomaly Detected! Encrypt and update");
+            transitionFrame(received_frame, &encrypted_frame);
+            int encryptResult = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
+            ResetCompleteStruct(&metricsData);
+            resetData(&dataCount);
+            if(encryptResult && handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
+                publishFrame(encrypted_frame, dataTopic, clen);
+            }
+        }
+    } else {
+        Serial.println("Handshake failed.");
+        return;
+    }
+}
 
 void test_ascon_encryption_decryption() {
     const unsigned char plaintext[] = "Encrypt Data 9999";
@@ -86,111 +144,49 @@ void test_ascon_encryption_decryption() {
     clenForTrans = clen;
 }
 
-ThreeWayHandshake handshake(Serial1, 5000);
-
-void setup() {
-    Serial.begin(115200);  
-    tfliteModel.Initialize();
-    setup_wifi();
-    client.setServer(mqtt_server, mqtt_port);
-    client.setCallback(callback);
-    Serial1.begin(115200, SERIAL_8N1, 16, 17); // Initialize UART1 with TX=16, RX=17
-    Serial.println("ESP32 UART Receiver Initialized");
-    // test_ascon_encryption_decryption();
-    tfliteModel.Initialize();
+void VerifyInterpreterReset(){
+    if (tfliteModel.interpreter == nullptr) {
+        Serial.println("Re-initializing interpreter...");
+        if (!tfliteModel.Initialize()) {
+            Serial.println("Failed to re-setup interpreter.");
+            return;
+        }
+    }
 }
 
-void loop() {
-    mqtt_setup();
-    Frame_t received_frame;
-    Encrypt_Frame_t encrypted_frame;
-    unsigned long long clen;
-    if (!client.connected()) {
-        Serial.println("MQTT client not connected, attempting to reconnect...");
-        reconnect();
+void AggregateData(dataToProcess* data, Frame_t* received_frame){
+    data->heartRate.dataSum += received_frame->dataPacket.data[0];
+    data->spO2.dataSum += received_frame->dataPacket.data[1];
+    data->temperature.dataSum += received_frame->dataPacket.data[2];
+    data->accelerator.dataSum += received_frame->dataPacket.data[3];
+}
+
+void ProcessAverage(Frame_t* received_frame, dataToProcess* data, uint16_t &dataCount){
+    received_frame->dataPacket.data[0] = data->heartRate.dataSum / dataCount;
+    received_frame->dataPacket.data[1] = data->spO2.dataSum / dataCount;
+    received_frame->dataPacket.data[2] = data->temperature.dataSum / dataCount;
+    received_frame->dataPacket.data[3] = data->accelerator.dataSum / dataCount;
+
+    resetData(&data->heartRate.dataSum);
+    resetData(&data->spO2.dataSum);
+    resetData(&data->temperature.dataSum);
+    resetData(&data->accelerator.dataSum);
+    resetData(&dataCount);
+}
+
+bool IsFinishedAggregate(unsigned long* currentMillis, unsigned long* previousMillis, const long timeInterval){
+    if (*currentMillis - *previousMillis >= timeInterval) {
+        *previousMillis = *currentMillis;  
+        return true;
     } else {
-        client.loop();  
+        return false;
     }
-    Serial.println("----------Three way handshake---------");
-    if (handshake.performHandshake(COMMAND_SYN, COMMAND_SYN_ACK, COMMAND_ACK)) {
-        Serial.println("Handshake completed successfully!");
-        Serial.println("Starting parsing frame...");
-        Serial.println("----------Received Frame---------");
-        if (Serial1.available() >= sizeof(Frame_t)) {
-            // Read frame data from UART
-            Serial1.readBytes((uint8_t*)&received_frame, sizeof(received_frame));
+}
 
-            int result = parse_frame((uint8_t*)&received_frame, sizeof(received_frame));
-
-            if (result != 0) {
-                Serial.print("Failed to parse frame, error code: ");
-                Serial.println(result);
-                return;
-            }
-        }
-        bool isAnomaly = false;
-        //tfliteModel.Cleanup();
-        if (tfliteModel.interpreter == nullptr) {
-            Serial.println("Re-initializing interpreter...");
-            if (!tfliteModel.Initialize()) {
-                Serial.println("Failed to re-setup interpreter.");
-                return;
-            }
-        }
-        tfliteModel.PerformInference(float(received_frame.dataPacket.data[0]), float(received_frame.dataPacket.data[3]), float(received_frame.dataPacket.data[2]), &isAnomaly);
-        if(!isAnomaly){
-            Serial.println("Normal! Aggregating...");
-            heartRate.dataSum += received_frame.dataPacket.data[0];
-            spO2.dataSum += received_frame.dataPacket.data[1];
-            temperature.dataSum += received_frame.dataPacket.data[2];
-            accelerator.dataSum += received_frame.dataPacket.data[3];
-            dataCount++;
-            unsigned long currentMillis = millis();
-            if (currentMillis - previousMillis >= aggregationInterval) {
-                Serial.println("Aggregate completed! Sending...");
-                previousMillis = currentMillis;
-                received_frame.dataPacket.data[0] = heartRate.dataSum / dataCount;
-                received_frame.dataPacket.data[1] = spO2.dataSum / dataCount;
-                received_frame.dataPacket.data[2] = temperature.dataSum / dataCount;
-                received_frame.dataPacket.data[3] = accelerator.dataSum / dataCount;
-
-                resetData(&heartRate.dataSum);
-                resetData(&spO2.dataSum);
-                resetData(&temperature.dataSum);
-                resetData(&accelerator.dataSum);
-                resetData(&dataCount);
-
-                transitionFrame(received_frame, &encrypted_frame);
-                int result = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
-                switch(result){
-                    case 1: Serial.println("Encryption successful"); break;
-                    default: Serial.println("Encryption failed"); break;
-                }
-                if(handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
-                    publishFrame(encrypted_frame, dataTopic, clen);
-                }
-            }
-        }
-        else{
-            Serial.println("Anomaly Detected! Encrypt and update");
-            transitionFrame(received_frame, &encrypted_frame);
-            int result = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
-            switch(result){
-                case 1: Serial.println("Encryption successful"); break;
-                default: Serial.println("Encryption failed"); break;
-            }
-            resetData(&heartRate.dataSum);
-            resetData(&spO2.dataSum);
-            resetData(&temperature.dataSum);
-            resetData(&accelerator.dataSum);
-            resetData(&dataCount);
-            if(handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
-                publishFrame(encrypted_frame, dataTopic, clen);
-            }
-        }
-    } else {
-        Serial.println("Handshake failed.");
-        return;
-    }
+void ResetCompleteStruct(dataToProcess* metricsData){
+    metricsData->accelerator.dataSum = 0;
+    metricsData->heartRate.dataSum = 0;
+    metricsData->spO2.dataSum = 0;
+    metricsData->temperature.dataSum = 0;
 }
 
