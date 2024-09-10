@@ -17,10 +17,11 @@
 #include "model_test.h" // Include your model header
 
 namespace {
-using AnomalyDetectionOpResolver = tflite::MicroMutableOpResolver<1>;
+using AnomalyDetectionOpResolver = tflite::MicroMutableOpResolver<2>;
 
 TfLiteStatus RegisterOps(AnomalyDetectionOpResolver& op_resolver) {
   TF_LITE_ENSURE_STATUS(op_resolver.AddFullyConnected());
+  TF_LITE_ENSURE_STATUS(op_resolver.AddRelu());
   // Add other operators if needed
   return kTfLiteOk;
 }

@@ -19,7 +19,8 @@
 	"settings": {
 		"files.associations": {
 			"kiss_fft.h": "c",
-			"kiss_fftr.h": "c"
+			"kiss_fftr.h": "c",
+			"functional": "cpp"
 		}
 	}
 }
