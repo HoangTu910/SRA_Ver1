@@ -3,7 +3,7 @@ const { execFile } = require('child_process');
 const path = require('path');
 const DeviceDataService = require('./DeviceDataService');
 
-const brokerUrl = 'mqtt://localhost:1883';
+const brokerUrl = 'mqtt://localhost:1885';
 const topic = 'sensors/data';
 
 const TOPIC_HANDSHAKE_SYN = 'handshake/syn';
@@ -48,15 +48,17 @@ function reconstructDecryptedData(decryptedtext) {
         dataLen: dataLen
     };
 
-    if (dataLen >= 4) {
+    if (dataLen >= 5) {
         let heartRate = decryptedtext[35];
         let spO2 = decryptedtext[36];
         let temperature = decryptedtext[37];
         let acceleration = decryptedtext[38];
+        let isanomaly = decryptedtext[39];
         result.heartRate = heartRate;
         result.spO2 = spO2;
         result.temperature = temperature;
         result.acceleration = acceleration;
+        result.isanomaly = isanomaly
         // console.log("Extracted Heart Rate: ", heartRate);
         // console.log("Extracted SpO2: ", spO2);
         // console.log("Extracted Temperature: ", temperature);
@@ -202,7 +204,7 @@ function initMQTT() {
         } else if (topic === 'sensors/data') {
             try {
                 const data = JSON.parse(message.toString());
-                console.log('Data: ', data);
+                //console.log('Data: ', data);
                 const encryptDataBuffer = Buffer.from(data.dataEncrypted);
                 const nonce = Buffer.from(data.nonce);
                 const key = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]);
@@ -212,16 +214,18 @@ function initMQTT() {
                 // console.log('Decrypted Data Buffer: ', decryptedData);
                 console.log('Decrypted Data (Hex): ', decryptedData.toString('hex'));
                 const result = reconstructDecryptedData(decryptedData);
-                console.log('Device ID: ', result.deviceId);
-                console.log('Heart Rate: ', result.heartRate);
-                console.log('Temperature: ', result.temperature);
-                console.log('SPO2: ', result.spO2);
+                // console.log('Device ID: ', result.deviceId);
+                // console.log('Heart Rate: ', result.heartRate);
+                // console.log('Temperature: ', result.temperature);
+                // console.log('SPO2: ', result.spO2);
+                // console.log('Anomaly: ', result.isanomaly);
                 // Write data to Firestore
                 const uploadData = {
                     heart_rate: result.heartRate,
                     temperature: result.temperature,
                     spO2: result.spO2,
-                    acceleration: result.acceleration
+                    acceleration: result.acceleration,
+                    isanomaly: result.isanomaly
                 };
                 
                 await DeviceDataService.createDeviceData(uploadData, result.deviceId);

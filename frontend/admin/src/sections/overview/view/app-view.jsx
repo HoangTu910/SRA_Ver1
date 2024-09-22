@@ -84,7 +84,7 @@ export default function AppView() {
 
   //   return () => clearInterval(intervalId);
   // }, []);
-  const [metrics, setMetrics] = useState({ heart_rate: null, spO2: null, temperature: null, acceleration: null });
+  const [metrics, setMetrics] = useState({ heart_rate: null, spO2: null, temperature: null, acceleration: null, isanomaly: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [heartRateQueue, setHeartRateQueue] = useState([]);
@@ -128,12 +128,13 @@ export default function AppView() {
 
         socket.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          console.log('Received data:', data);
+          console.log('Received data 1:', data);
           setMetrics({
             heart_rate: data.heart_rate,
             spO2: data.spO2,
             temperature: data.temperature,
-            acceleration: data.acceleration
+            acceleration: data.acceleration,
+            isanomaly: data.isanomaly
           });
 
           // Update heart rate queue
@@ -281,10 +282,10 @@ export default function AppView() {
         <Grid xs={12} sm={6} md={3}>
           <AppWidgetSummary
             sx={{background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)'}}
-            title="Accelerator"
+            title="Steps/minute"
             total={metrics.acceleration ?? 0}
             color="error"
-            icon={<img alt="icon" style={{ width: '50px', height: '50px' }} src="/assets/icons/glass/Blood.png" />}
+            icon={<img alt="icon" style={{ width: '50px', height: '50px' }} src="/assets/icons/glass/run-directions.svg" />}
           />
         </Grid>
 
@@ -325,11 +326,12 @@ export default function AppView() {
             title="Diagnosis"
             chart={{
               series: [
-                { label: 'America', value: 4344 },
-                { label: 'Asia', value: 5435 },
-                { label: 'Europe', value: 1443 },
-                { label: 'Africa', value: 4443 },
+                { label: metrics.isanomaly === 1 ? 'Anomaly' : 'Normal', value: 200 },
               ],
+              colors: [metrics.isanomaly === 1 ? '#FF9999' : '#99FF99'], // Light Red for Anomaly, Light Green for Normal
+              stroke: {
+                width: -1 // Set stroke width to 0 to remove the white line
+              },
               xaxis: {
                 type: 'category', // Sử dụng 'category' để giữ lại định dạng như hiện tại
                 labels: {
@@ -341,6 +343,8 @@ export default function AppView() {
             }}
           />
         </Grid>
+
+
 
         <Grid xs={12} md={6} lg={8}>
           <AppConversionRates

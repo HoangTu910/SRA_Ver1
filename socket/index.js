@@ -102,17 +102,19 @@ async function getDataSensorFromDatabase(deviceId) {
     const heart_rate = data.heart_rate;
     const spO2 = data.spO2;
     const temperature = data.temperature;
+    const isanomaly = data.isanomaly;
 
     console.log('Data Sensor retrieved successfully.');
     console.log('heart_rate: ', heart_rate);
     console.log('spO2: ', spO2);
     console.log('temperature: ', temperature);
-
+    console.log('isanomaly: ', isanomaly);
     return {
       id: doc.id,
       heart_rate,
       spO2,
-      temperature
+      temperature,
+      isanomaly
     };
   } catch (error) {
     console.error('Error retrieving data from Firestore:', error);
@@ -147,8 +149,8 @@ wss.on('connection', (ws) => {
         unsubscribe = deviceDocRef.onSnapshot((doc) => {
           if (doc.exists) {
             const data = doc.data();
-            const { heart_rate, spO2, temperature, acceleration } = data;
-            const payload = { heart_rate, spO2, temperature, acceleration };
+            const { heart_rate, spO2, temperature, acceleration, isanomaly } = data;
+            const payload = { heart_rate, spO2, temperature, acceleration, isanomaly };
             ws.send(JSON.stringify(payload));
           } else {
             console.log('No such document!');
