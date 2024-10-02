@@ -14,3 +14,16 @@ The objective of autoencoder is it will try to reconstruct the input data as sim
 * pleth_4: MAX30101 red wavelength PPG from the proximal phalanx (base segment) of the left index finger palmar side (arbitrary units, 500Hz)
 * pleth_5: MAX30101 infrared wavelength PPG from the proximal phalanx (base segment) of the left index finger palmar side (arbitrary units, 500Hz)
 * pleth_6: MAX30101 green wavelength PPG from the proximal phalanx (base segment) of the left index finger palmar side (arbitrary units, 500Hz)
+* temp_1: distal phalanx (first segment) PPG sensor temperature (°C, 10Hz)
+* temp_2: proximal phalanx (base segment) PPG sensor temperature in (°C, 10Hz)
+* temp_3: InvenSenseMPU-9250 IMU temperature (°C, 500Hz)
+* a_x: InvenSenseMPU-9250 IMU acceleration in x-direction (g, 500Hz)
+* a_y: InvenSenseMPU-9250 IMU acceleration in y-direction (g, 500Hz)
+* a_z: InvenSenseMPU-9250 IMU acceleration in z-direction (g, 500Hz)
+* g_x: InvenSenseMPU-9250 IMU angular velocity around x-axis (°/s, 500Hz)
+* g_y: InvenSenseMPU-9250 IMU angular velocity around y-axis (°/s, 500Hz)
+* g_z: InvenSenseMPU-9250 IMU angular velocity around z-axis (°/s, 500Hz)
+
+### Data input dimension
+
+Input_data = (pleth_6, temp_2, [a_x, a_y, a_z, g_x, g_y, g_x])
