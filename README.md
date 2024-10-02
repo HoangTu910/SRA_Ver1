@@ -363,6 +363,9 @@ https://github.com/eepj/stm32-max30102/blob/master/max30102_for_stm32_hal.c
 ### PPG Dataset
 https://www.physionet.org/content/pulse-transit-time-ppg/1.1.0/
 
+### Heart rate estimation dataset
+https://ubicomp.eti.uni-siegen.de/home/datasets/sensors19/
+
 
 
 
