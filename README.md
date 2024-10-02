@@ -357,6 +357,9 @@ https://colab.research.google.com/drive/1-bmDGz6satWL-ypIJZbpSJl4uA-0ouzw?authus
 
 ![ảnh](https://github.com/user-attachments/assets/325443f0-d2f3-4c31-9024-9641297122c7)
 
+### MAX30102 using STM32
+https://github.com/eepj/stm32-max30102/blob/master/max30102_for_stm32_hal.c
+
 
 
 
