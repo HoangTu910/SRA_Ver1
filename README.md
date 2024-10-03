@@ -31,7 +31,7 @@ Input_data = (pleth_6, temp_2, [a_x, a_y, a_z, g_x, g_y, g_x])
 ### Implemetation
 
 #### 1. High-quality PPG signal classification on Device Layer (STM32)
-- Apply represation learning method proposed in documentation
+- Apply representation learning method proposed in documentation
   
 ![ảnh](https://github.com/user-attachments/assets/3b0a4c73-82db-4d06-89af-7c3edc01dda9)
 
