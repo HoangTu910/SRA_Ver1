@@ -101,7 +101,7 @@ bool ThreeWayHandshake::performHandshake(uint8_t commandSyn, uint8_t commandSynA
     }
 
     if (state) {
-        Serial.println("Three-way handshake success!");
+        Serial.println("Three-way handshake [PASSED]");
         return true;
     } else {
         Serial.println("Unable to receive final packet!");

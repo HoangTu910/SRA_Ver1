@@ -4,16 +4,18 @@
 #include "handshake.h"
 
 // Network credentials
-const char* ssid = "OWLCLUB";
-const char* password = "OwlclubUS";
+const char* ssid = "The Jade Coffee and Tea";
+const char* password = "caphengon";
 
 // MQTT Broker
-const int mqtt_port = 1883;
+const int mqtt_port = 1885;
 const char* mqtt_user = "admin";
 const char* mqtt_pass = "123";
 const char* mqtt_server = "113.161.225.11";
 const char* device_id = "newdevice123";
 const char* dataTopic = "sensors/data";
+const char* publicKeyTopic = "encrypt/dhexchange";
+
 bool receivedSynAck = false; 
 // WiFi and MQTT client objects
 WiFiClient espClient;
@@ -113,5 +115,36 @@ String bytesToHexString(byte* payload, unsigned int length) {
         hexString += String(payload[i], HEX);
     }
     return hexString;
+}
+
+void publishPublicKey(DH_KEY publicKey, const char *topic)
+{
+    if (client.publish(publicKeyTopic, (const char *)publicKey, DH_KEY_LENGTH)) {
+        Serial.println("DH key published successfully.");
+    } else {
+        Serial.println("Failed to publish DH key.");
+    }
+}
+
+void performKeyExchange()
+{
+    Serial.println("Define");
+    DH_KEY clientPublic, clientPrivate, clientSecret;
+
+    Serial.println("Random");
+    time_t seed;
+	time(&seed);
+	srand((unsigned int)seed);
+
+    Serial.println("Generate Key");
+    DH_generate_key_pair(clientPublic, clientPrivate);
+    Serial.println("Finished generate key");
+    publishPublicKey(clientPublic, publicKeyTopic);
+
+    Serial.print("[PUBLIC KEY]: ");
+    for (int i = 0; i < DH_KEY_LENGTH; i++) {
+        Serial.printf("%02X", clientPublic[i]);  // Print as hex
+    }
+    Serial.println();
 }
 #endif

@@ -14,8 +14,8 @@
 #include "TFLiteModel.h"
 #include "model.h" // Include your model header
 
-constexpr int kTensorArenaSize = 20 * 1024; // 10KB
-uint8_t tensor_arena[kTensorArenaSize];
+constexpr int kTensorArenaSize = 10 * 1024; // 10KB
+alignas(16) uint8_t tensor_arena[kTensorArenaSize];
 TFLiteModel::TFLiteModel() : model(nullptr), interpreter(nullptr), input(nullptr), output(nullptr) {}
 
 TfLiteStatus TFLiteModel::RegisterOps(AnomalyDetectionOpResolver& op_resolver) {
@@ -73,9 +73,10 @@ void TFLiteModel::Cleanup() {
 }
 
 bool TFLiteModel::PerformInference(float hr, float ac, float te, bool* res) {
-    input->data.f[0] = hr;
-    input->data.f[1] = ac;
-    input->data.f[2] = te;
+    float normalized_heart_rate = this->normalize(hr, this->heart_rate_min, this->heart_rate_max);
+    float normalized_steps = this->normalize(ac, this->accel_min, this->accel_max);
+    input->data.f[0] = normalized_heart_rate;
+    input->data.f[1] = normalized_steps;
     Serial.print("Data 1: ");
     Serial.print(hr);
     Serial.print(", Data 2: ");
@@ -84,10 +85,18 @@ bool TFLiteModel::PerformInference(float hr, float ac, float te, bool* res) {
     Serial.println(te);
     TF_LITE_ENSURE_STATUS(interpreter->Invoke());
 
-    float anomaly_score = output->data.f[0];
-    Serial.print("Anomaly Score: ");
-    Serial.println(anomaly_score);
-    if (anomaly_score > 0.5) {
+    float output_value_hr = output->data.f[0]; 
+    float output_value_steps = output->data.f[1];
+    float mse_hr = pow(output_value_hr - normalized_heart_rate, 2);
+    float mse_steps = pow(output_value_steps - normalized_steps, 2);
+    float reconstruction_error = (mse_hr + mse_steps) / 2.0f;
+    Serial.print("MSE HR: ");
+    Serial.print(mse_hr, 4); // Print with 4 decimal places
+    Serial.print(" | MSE Steps: ");
+    Serial.print(mse_steps, 4); // Print with 4 decimal places
+    Serial.print(" | Reconstruction Error: ");
+    Serial.println(reconstruction_error, 7);
+    if (reconstruction_error > 0.0002) {
         //Serial.println("Anomaly detected!");
         *res = true;
     } else {
@@ -115,6 +124,11 @@ bool TFLiteModel::Interpreter()
     output = interpreter->output(0);
 
     return true;
+}
+
+float TFLiteModel::normalize(int value, float min, float max)
+{
+    return (value - min) / (max - min);
 }
 
 void TFLiteModel::LoadModel()

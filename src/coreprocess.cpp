@@ -66,33 +66,33 @@ int parse_frame(uint8_t *received_data, size_t length)
         Serial.println(received_crc);
         Serial.print("Computed CRC: ");
         Serial.println(computed_crc);
-        Serial.println("CRC match");
+        Serial.println("CRC [PASSED]");
     }
 
     //process the data
-    Serial.println("Frame parsed successfully");
-    Serial.print("H1: ");
+    Serial.print("[H1] ");
     Serial.println(frame->h1);
-    Serial.print("H2: ");
+    Serial.print("[H2] ");
     Serial.println(frame->h2);
-    Serial.print("Device ID Len: ");
+    Serial.print("[ID LEN] ");
     Serial.println(frame->dataPacket.deviceLen);
-    Serial.print("Device ID: ");
+    Serial.print("[ID] ");
     Serial.println(frame->dataPacket.deviceId);
-    Serial.print("Data Len: ");
+    Serial.print("[DATA LEN] ");
     Serial.println(frame->dataPacket.dataLen);
-    Serial.print("Heart Rate: ");
+    Serial.print("[HR] ");
     Serial.println(frame->dataPacket.data[0]);
-    Serial.print("SpO2: ");
+    Serial.print("[SPO2] ");
     Serial.println(frame->dataPacket.data[1]);
-    Serial.print("Temperature: ");
+    Serial.print("[TEMP] ");
     Serial.println(frame->dataPacket.data[2]);
-    Serial.print("Acceleration: ");
+    Serial.print("[AC] ");
     Serial.println(frame->dataPacket.data[3]);
-    Serial.print("T1: ");
+    Serial.print("[T1] ");
     Serial.println(frame->t1);
-    Serial.print("T2: ");
+    Serial.print("[T2] ");
     Serial.println(frame->t2);
+    Serial.println("Frame process [PASSED]");
     return 0;  // Success
 }
 
@@ -228,14 +228,14 @@ uint8_t reconstructDecryptedData(unsigned char *decryptedtext) {
         uint8_t spO2 = decryptedtext[36];
         uint8_t temperature = decryptedtext[37];
         uint8_t acceleration = decryptedtext[38];
-        Serial.print("Heart Rate: ");
-        Serial.println(heartRate);
-        Serial.print("SpO2: ");
-        Serial.println(spO2);
-        Serial.print("Temperature: ");
-        Serial.println(temperature);
-        Serial.print("Acceleration: ");
-        Serial.println(acceleration);
+        // Serial.print("Heart Rate: ");
+        // Serial.println(heartRate);
+        // Serial.print("SpO2: ");
+        // Serial.println(spO2);
+        // Serial.print("Temperature: ");
+        // Serial.println(temperature);
+        // Serial.print("Acceleration: ");
+        // Serial.println(acceleration);
     } else {
         Serial.println("Insufficient data length to extract health metrics.");
     }
@@ -316,7 +316,7 @@ bool ParseFrameProcess(Frame_t *received_frame) {
         return false;
     }
 
-    Serial.println("Frame parsed successfully.");
+    Serial.println("[FRAME PHASE ACCEPTED]");
     return true;
 }
 

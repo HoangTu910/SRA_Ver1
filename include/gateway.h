@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include "frameparsing.h"
+#include "dhexchange.h"
 
 extern const char* ssid;
 extern const char* password;
@@ -16,6 +17,7 @@ extern const char* device_id;
 extern bool receivedSynAck;
 
 extern const char* dataTopic;
+extern const char* publicKeyTopic;
 
 extern WiFiClient espClient;
 extern PubSubClient client;
@@ -27,4 +29,6 @@ void reconnect();
 uint8_t mqtt_setup();
 void publishFrame(Encrypt_Frame_t& frame, const char* topic, unsigned long long clen);
 String bytesToHexString(byte* payload, unsigned int length);
+void publishPublicKey(DH_KEY publicKey, const char* topic);
+void performKeyExchange();
 #endif // WIFI_CONFIG_H

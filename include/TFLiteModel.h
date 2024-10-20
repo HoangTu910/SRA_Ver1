@@ -20,6 +20,11 @@ public:
     void Cleanup();
     bool PerformInference(float hr, float ac, float te, bool* res);
     bool Interpreter();
+    float normalize(int value, float min, float max);
+    const float heart_rate_min = 57.0;  
+    const float heart_rate_max = 155.0; 
+    const float accel_min = 0.0;        
+    const float accel_max = 140.0; 
     tflite::MicroInterpreter* interpreter;
 private:
     void LoadModel();

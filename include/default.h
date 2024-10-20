@@ -6,6 +6,13 @@
 #define AIOT_TX 16
 #define AIOT_RX 17
 
+#define ASCON_KEY_SIZE 16
+#define ASCON_NONCE_SIZE 16
+#define ASCON_CIPHERTEXT_SIZE 64
+#define ASCON_DECRYPTED_TEXT_SIZE 64
+
+#define RESET_STATE 0
+
 enum dataIndex{
     HEART_RATE,
     SPO2,

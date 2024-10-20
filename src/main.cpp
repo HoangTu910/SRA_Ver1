@@ -49,9 +49,10 @@ void loop() {
         //Setup model
         VerifyInterpreterReset();
         ExecutePredictionModel(received_frame, &isAnomaly);
-
+        performKeyExchange();
         if(!isAnomaly){
             Serial.println("Normal! Aggregating...");
+            received_frame.dataPacket.data[ANOMALY] = 0;
             AggregateData(&metricsData, &received_frame);
             dataCount++;
             unsigned long currentMillis = millis();
@@ -60,7 +61,7 @@ void loop() {
 
                 ProcessAverage(&received_frame, &metricsData, dataCount);
                 transitionFrame(received_frame, &encrypted_frame);
-
+                
                 int encryptResult = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
                 if(encryptResult && handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
                     publishFrame(encrypted_frame, dataTopic, clen);
@@ -68,6 +69,7 @@ void loop() {
             }
         } else{
             Serial.println("Anomaly Detected! Encrypt and update");
+            received_frame.dataPacket.data[ANOMALY] = 1;
             transitionFrame(received_frame, &encrypted_frame);
             int encryptResult = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
             ResetCompleteStruct(&metricsData);
@@ -82,13 +84,15 @@ void loop() {
     }
 }
 
+
+//Definition
 void test_ascon_encryption_decryption() {
     const unsigned char plaintext[] = "Encrypt Data 9999";
-    const unsigned char key[16] = ASCON_KEY;  // 128-bit key
-    unsigned char nonce[16]; generate_nonce(nonce);
+    const unsigned char key[ASCON_KEY_SIZE] = ASCON_KEY;  // 128-bit key
+    unsigned char nonce[ASCON_NONCE_SIZE]; generate_nonce(nonce);
     const unsigned char assoc_data[] = "Metadata"; // Optional
-    unsigned char ciphertext[64];
-    unsigned char decryptedtext[64];
+    unsigned char ciphertext[ASCON_CIPHERTEXT_SIZE];
+    unsigned char decryptedtext[ASCON_DECRYPTED_TEXT_SIZE];
     unsigned long long clen = 0;
     unsigned long long decrypted_len = 0;
 
@@ -148,17 +152,17 @@ void VerifyInterpreterReset(){
 }
 
 void AggregateData(dataToProcess* data, Frame_t* received_frame){
-    data->heartRate.dataSum += received_frame->dataPacket.data[0];
-    data->spO2.dataSum += received_frame->dataPacket.data[1];
-    data->temperature.dataSum += received_frame->dataPacket.data[2];
-    data->accelerator.dataSum += received_frame->dataPacket.data[3];
+    data->heartRate.dataSum += received_frame->dataPacket.data[HEART_RATE];
+    data->spO2.dataSum += received_frame->dataPacket.data[SPO2];
+    data->temperature.dataSum += received_frame->dataPacket.data[TEMPERATURE];
+    data->accelerator.dataSum += received_frame->dataPacket.data[ACCELEROMETER];
 }
 
 void ProcessAverage(Frame_t* received_frame, dataToProcess* data, uint16_t &dataCount){
-    received_frame->dataPacket.data[0] = data->heartRate.dataSum / dataCount;
-    received_frame->dataPacket.data[1] = data->spO2.dataSum / dataCount;
-    received_frame->dataPacket.data[2] = data->temperature.dataSum / dataCount;
-    received_frame->dataPacket.data[3] = data->accelerator.dataSum / dataCount;
+    received_frame->dataPacket.data[HEART_RATE] = data->heartRate.dataSum / dataCount;
+    received_frame->dataPacket.data[SPO2] = data->spO2.dataSum / dataCount;
+    received_frame->dataPacket.data[TEMPERATURE] = data->temperature.dataSum / dataCount;
+    received_frame->dataPacket.data[ACCELEROMETER] = data->accelerator.dataSum / dataCount;
 
     resetData(&data->heartRate.dataSum);
     resetData(&data->spO2.dataSum);
@@ -177,10 +181,10 @@ bool IsFinishedAggregate(unsigned long* currentMillis, unsigned long* previousMi
 }
 
 void ResetCompleteStruct(dataToProcess* metricsData){
-    metricsData->accelerator.dataSum = 0;
-    metricsData->heartRate.dataSum = 0;
-    metricsData->spO2.dataSum = 0;
-    metricsData->temperature.dataSum = 0;
+    metricsData->accelerator.dataSum = RESET_STATE;
+    metricsData->heartRate.dataSum = RESET_STATE;
+    metricsData->spO2.dataSum = RESET_STATE;
+    metricsData->temperature.dataSum = RESET_STATE;
 }
 
 void ExecutePredictionModel(Frame_t &received_frame, bool* isAnomaly)
