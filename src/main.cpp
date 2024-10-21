@@ -49,6 +49,8 @@ void loop() {
         //Setup model
         VerifyInterpreterReset();
         ExecutePredictionModel(received_frame, &isAnomaly);
+
+        //Key exchange
         performKeyExchange();
         if(!isAnomaly){
             Serial.println("Normal! Aggregating...");
@@ -58,10 +60,8 @@ void loop() {
             unsigned long currentMillis = millis();
             if (IsFinishedAggregate(&currentMillis, &previousMillis, aggregationInterval)) {
                 Serial.println("Aggregate completed! Sending...");
-
                 ProcessAverage(&received_frame, &metricsData, dataCount);
                 transitionFrame(received_frame, &encrypted_frame);
-                
                 int encryptResult = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
                 if(encryptResult && handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
                     publishFrame(encrypted_frame, dataTopic, clen);

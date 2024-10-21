@@ -15,6 +15,7 @@ extern const char* mqtt_user; // MQTT username
 extern const char* mqtt_pass; // MQTT password
 extern const char* device_id;  
 extern bool receivedSynAck;
+extern DH_KEY serverPublicKey;
 
 extern const char* dataTopic;
 extern const char* publicKeyTopic;
