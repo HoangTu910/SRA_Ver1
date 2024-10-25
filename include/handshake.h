@@ -39,7 +39,8 @@ private:
     void mqttCallback(char* topic, byte* payload, unsigned int length);
     bool waitForSynAck();
     bool receivedAckSyn2 = false;
-
+    int serverPublicCheck(DH_KEY serverPublicKey);
+    void generateSecretKey(DH_KEY clientSecret);
 };
 
 #endif

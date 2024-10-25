@@ -2,6 +2,7 @@
 #define _HANDSHAKE_H
 #include "handshake.h"
 
+DH_KEY serverPublicKey = {0};
 ThreeWayHandshake::ThreeWayHandshake(HardwareSerial &serialPort, uint32_t timeoutDuration)
     : serial(serialPort), timeout(timeoutDuration) {}
 
@@ -29,21 +30,21 @@ bool ThreeWayHandshake::receivePacket(uint8_t expectedData) {
 }
 
 void ThreeWayHandshake::mqttCallback(char* topic, byte* payload, unsigned int length) {
-    Serial.print("Message arrived on topic: ");
-    Serial.print(topic);
-    Serial.print(". Message: ");
+    // Serial.print("Message arrived on topic: ");
+    // Serial.print(topic);
+    // Serial.print(". Message: ");
     
-    // Print the payload as a string
-    String messageTemp;
-    for (unsigned int i = 0; i < length; i++) {
-        messageTemp += (char)payload[i];
-    }
-    Serial.println(messageTemp);
+    // // Print the payload as a string
+    // String messageTemp;
+    // for (unsigned int i = 0; i < length; i++) {
+    //     messageTemp += (char)payload[i];
+    // }
+    // Serial.println(messageTemp);
 
-    // Print the payload in HEX format for debugging
+    // // Print the payload in HEX format for debugging
     String mesHex = bytesToHexString(payload, length);
-    Serial.print("Message in HEX: ");
-    Serial.println(mesHex);
+    // Serial.print("Message in HEX: ");
+    // Serial.println(mesHex);
 
     // Check if the topic matches and if the message matches expected SYN-ACK
     if (String(topic) == "handshake/syn-ack") {
@@ -53,8 +54,19 @@ void ThreeWayHandshake::mqttCallback(char* topic, byte* payload, unsigned int le
         } else {
             Serial.println("SYN-ACK mismatch. Expected: " + String(SERVER_SYN_ACK, HEX) + ", Received: " + mesHex);
         }
-    } else {
-        Serial.println("Topic did not match 'handshake/syn-ack'.");
+    } else if (strcmp(topic, "encrypt/dhexchange-server") == 0) { 
+        for (int i = 0; i < DH_KEY_LENGTH; i++) {
+            serverPublicKey[i] = payload[i];  
+        }
+        // Serial.print("Received Server Public Key: ");
+        // for (int i = 0; i < DH_KEY_LENGTH; i++) {
+        //     Serial.printf("%02X", serverPublicKey[i]);
+        // }
+        // Serial.println();
+    }
+    else {
+        Serial.print("Topic did not match ");
+        Serial.println(String(topic));
     }
 }
 
@@ -159,4 +171,5 @@ bool ThreeWayHandshake::handshakeWithServer(uint8_t commandSyn, uint8_t commandS
 
     return true; // Handshake completed successfully
 }
+
 #endif

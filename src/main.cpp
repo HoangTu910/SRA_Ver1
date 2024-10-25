@@ -50,8 +50,6 @@ void loop() {
         VerifyInterpreterReset();
         ExecutePredictionModel(received_frame, &isAnomaly);
 
-        //Key exchange
-        performKeyExchange();
         if(!isAnomaly){
             Serial.println("Normal! Aggregating...");
             received_frame.dataPacket.data[ANOMALY] = 0;

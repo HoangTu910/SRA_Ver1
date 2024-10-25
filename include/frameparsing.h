@@ -19,6 +19,8 @@
 #define MAX_DATA_ENCRYPT 255
 #define NONCE_SIZE 16
 
+extern unsigned char ASCON_SECRET_KEY[16];
+
 // Ensure DataPacket_t is only defined here
 typedef struct {
     char deviceId[DEVICE_ID_LEN];

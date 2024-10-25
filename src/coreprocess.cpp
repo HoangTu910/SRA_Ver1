@@ -1,5 +1,5 @@
 #include "frameparsing.h"
-
+#include "gateway.h"
 uint16_t Compute_CRC16(uint8_t *data, size_t length)
 {
     uint16_t crc = 0xFFFF;
@@ -23,11 +23,12 @@ void log_error(const char *error_message)
 
 int parse_frame(uint8_t *received_data, size_t length)
 {
+    int passCount = 0;
     if (length != sizeof(Frame_t)) {
         log_error("Invalid frame size");
         return -1;  
     }
-
+    passCount++;
     Frame_t* frame = (Frame_t*)received_data;
 
     // Validate headers
@@ -37,61 +38,64 @@ int parse_frame(uint8_t *received_data, size_t length)
         log_error("Invalid frame headers");
         return -2; 
     }
-
+    passCount++;
     // Validate device length 
     if (frame->dataPacket.deviceLen != 32) {  
         log_error("Invalid device length");
         return -3;  
     }
-
+    passCount++;
     // Validate T1 and T2 fields
     if (frame->t1 != 0xCC || frame->t2 != 0xDD) {
         log_error("Invalid trailer values");
         return -4;  
     }
-
+    passCount++;
     // Validate CRC
     uint16_t received_crc = frame->crc;
     uint16_t computed_crc = Compute_CRC16(received_data, length - sizeof(frame->crc));
     if (received_crc != computed_crc) {
-        Serial.print("Received CRC: ");
-        Serial.println(received_crc);
-        Serial.print("Computed CRC: ");
-        Serial.println(computed_crc);
+        // Serial.print("Received CRC: ");
+        // Serial.println(received_crc);
+        // Serial.print("Computed CRC: ");
+        // Serial.println(computed_crc);
         log_error("CRC mismatch");
         return -5;  
     }
     else{
-        Serial.print("Received CRC: ");
-        Serial.println(received_crc);
-        Serial.print("Computed CRC: ");
-        Serial.println(computed_crc);
+        // Serial.print("Received CRC: ");
+        // Serial.println(received_crc);
+        // Serial.print("Computed CRC: ");
+        // Serial.println(computed_crc);
         Serial.println("CRC [PASSED]");
     }
+    passCount++;
 
     //process the data
-    Serial.print("[H1] ");
-    Serial.println(frame->h1);
-    Serial.print("[H2] ");
-    Serial.println(frame->h2);
-    Serial.print("[ID LEN] ");
-    Serial.println(frame->dataPacket.deviceLen);
-    Serial.print("[ID] ");
-    Serial.println(frame->dataPacket.deviceId);
-    Serial.print("[DATA LEN] ");
-    Serial.println(frame->dataPacket.dataLen);
-    Serial.print("[HR] ");
-    Serial.println(frame->dataPacket.data[0]);
-    Serial.print("[SPO2] ");
-    Serial.println(frame->dataPacket.data[1]);
-    Serial.print("[TEMP] ");
-    Serial.println(frame->dataPacket.data[2]);
-    Serial.print("[AC] ");
-    Serial.println(frame->dataPacket.data[3]);
-    Serial.print("[T1] ");
-    Serial.println(frame->t1);
-    Serial.print("[T2] ");
-    Serial.println(frame->t2);
+    // Serial.print("[H1] ");
+    // Serial.println(frame->h1);
+    // Serial.print("[H2] ");
+    // Serial.println(frame->h2);
+    // Serial.print("[ID LEN] ");
+    // Serial.println(frame->dataPacket.deviceLen);
+    // Serial.print("[ID] ");
+    // Serial.println(frame->dataPacket.deviceId);
+    // Serial.print("[DATA LEN] ");
+    // Serial.println(frame->dataPacket.dataLen);
+    // Serial.print("[HR] ");
+    // Serial.println(frame->dataPacket.data[0]);
+    // Serial.print("[SPO2] ");
+    // Serial.println(frame->dataPacket.data[1]);
+    // Serial.print("[TEMP] ");
+    // Serial.println(frame->dataPacket.data[2]);
+    // Serial.print("[AC] ");
+    // Serial.println(frame->dataPacket.data[3]);
+    // Serial.print("[T1] ");
+    // Serial.println(frame->t1);
+    // Serial.print("[T2] ");
+    // Serial.println(frame->t2);
+    Serial.print("Test count: ");
+    Serial.println(passCount);
     Serial.println("Frame process [PASSED]");
     return 0;  // Success
 }
@@ -112,6 +116,17 @@ uint8_t transitionFrame(Frame_t frame, Encrypt_Frame_t *en_frame)
 
 int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame, unsigned long long* getLen)
 {
+    //Key exchange
+    unsigned char key[16];
+    Serial.println("Key exchanging...");
+    performKeyExchange(key);
+    Serial.print("[KEY ENCRYPT FROM CLIENT]: ");
+    for(int i = 0; i < 16; i++){
+        Serial.print(key[i], HEX);
+    }
+    Serial.println();
+    Serial.println("Key exchanging completed!");
+
     unsigned char *dataPacket = (unsigned char *)&frame->dataPacket;
     // Serial.print("Data Log: ");
     // for (size_t i = 0; i < sizeof(frame->dataPacket); i++) {
@@ -119,11 +134,9 @@ int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame, unsigned long l
     //     Serial.print(" ");
     // }
     // Serial.println();
-
     size_t dataPacketLen = sizeof(frame->dataPacket);
     unsigned char ciphertext[dataPacketLen + CRYPTO_ABYTES];  
     unsigned long long ciphertextLen;
-    const unsigned char key[16] = ASCON_KEY; 
     unsigned char nonce[16]; 
     generate_nonce(nonce);  
     const unsigned char assoc_data[] = "Metadata";
@@ -136,7 +149,7 @@ int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame, unsigned long l
         Serial.println("Encryption failed!");
         return ret;
     }
-    Serial.println("Encryption success!");
+    Serial.println("Encryption completed!");
     Serial.print("Encrypted Data: ");
     for (size_t i = 0; i < ciphertextLen; i++) {
         Serial.print(ciphertext[i], HEX);
@@ -158,7 +171,7 @@ int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame, unsigned long l
         if (decrypted_len < sizeof(decryptedtext)) {
             decryptedtext[decrypted_len] = '\0';
         }
-        Serial.print("Decrypted text: ");
+        Serial.println("Decrypted completed.");
         for (unsigned long long i = 0; i < decrypted_len; i++) {
             Serial.print(decryptedtext[i], HEX);
             Serial.print(" ");
@@ -186,12 +199,12 @@ int decryptDataPacket(Encrypt_Frame_t* en_frame){
             decryptedtext[decrypted_len] = '\0';
         }
         
-        Serial.print("Decrypted text: ");
-        for (unsigned long long i = 0; i < decrypted_len; i++) {
-            Serial.print(decryptedtext[i], HEX);
-        }
-        Serial.println();
-        Serial.println("Construct");
+        // Serial.print("Decrypted text: ");
+        // for (unsigned long long i = 0; i < decrypted_len; i++) {
+        //     Serial.print(decryptedtext[i], HEX);
+        // }
+        // Serial.println();
+        // Serial.println("Construct");
         //reconstructDecryptedData(decryptedtext);
         } else {
             Serial.println("Decryption failed!");

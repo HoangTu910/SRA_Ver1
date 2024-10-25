@@ -4,6 +4,9 @@
 #include "handshake.h"
 
 // Network credentials
+// const char* ssid = "FETEL@DESLAB_SV";
+// const char* password = "deslabSV";
+
 const char* ssid = "Hoang Tuan";
 const char* password = "03081973";
 
@@ -18,7 +21,7 @@ const char* publicKeyTopic = "encrypt/dhexchange";
 
 bool receivedSynAck = false; 
 
-DH_KEY serverPublicKey;
+// DH_KEY serverPublicKey;
 // WiFi and MQTT client objects
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -43,35 +46,35 @@ void setup_wifi() {
 }
 
 void callback(char* topic, byte* message, unsigned int length) {
-    Serial.print("Message arrived on topic: ");
-    Serial.print(topic);
-    Serial.print(". Message: ");
-    String messageTemp;
+    // Serial.print("Message arrived on topic: ");
+    // Serial.print(topic);
+    // Serial.print(". Message: ");
+    // String messageTemp;
 
-    for (int i = 0; i < length; i++) {
-        messageTemp += (char)message[i];
-    }
-    Serial.println(messageTemp);
+    // for (int i = 0; i < length; i++) {
+    //     messageTemp += (char)message[i];
+    // }
+    // Serial.println(messageTemp);
 
-    String mes = bytesToHexString(message, length);
-    if (String(topic) == "handshake/syn-ack") {
-        if (mes == String(SERVER_SYN_ACK, HEX)) { // Convert SERVER_SYN_ACK to hex string
-            Serial.println("SYN-ACK match found. Received SYN-ACK.");
-            receivedSynAck = true;
-        } else {
-            Serial.println("SYN-ACK mismatch.");
-        }
-    } 
-    else if(String(topic) == "encrypt/dhexchange-server"){
-        for (int i = 0; i < DH_KEY_LENGTH; i++) {
-                serverPublicKey[i] = message[i];  
-            }
-            Serial.print("Received Server Public Key: ");
-            for (int i = 0; i < DH_KEY_LENGTH; i++) {
-                Serial.printf("%02X", serverPublicKey[i]);
-            }
-            Serial.println();
-    }
+    // String mes = bytesToHexString(message, length);
+    // if (strcmp(topic, "handshake/syn-ack") == 0) { 
+    //     if (mes == String(SERVER_SYN_ACK, HEX)) { 
+    //         Serial.println("SYN-ACK match found. Received SYN-ACK.");
+    //         receivedSynAck = true;
+    //     } else {
+    //         Serial.println("SYN-ACK mismatch.");
+    //     }
+    // } 
+    // else if (strcmp(topic, "encrypt/dhexchange-server") == 0) { 
+    //     for (int i = 0; i < DH_KEY_LENGTH; i++) {
+    //         serverPublicKey[i] = message[i];  
+    //     }
+    //     Serial.print("Received Server Public Key: ");
+    //     for (int i = 0; i < DH_KEY_LENGTH; i++) {
+    //         Serial.printf("%02X", serverPublicKey[i]);
+    //     }
+    //     Serial.println();
+    // }
 }
 
 void reconnect() {
@@ -127,7 +130,7 @@ String bytesToHexString(byte* payload, unsigned int length) {
     return hexString;
 }
 
-void publishPublicKey(DH_KEY publicKey, const char *topic) {
+bool publishPublicKey(DH_KEY publicKey, const char *topic) {
     char hexPublicKey[2 * DH_KEY_LENGTH + 1];
     for (int i = 0; i < DH_KEY_LENGTH; i++) {
         sprintf(hexPublicKey + 2 * i, "%02x", publicKey[i]);
@@ -136,33 +139,57 @@ void publishPublicKey(DH_KEY publicKey, const char *topic) {
     
     if (client.publish(publicKeyTopic, hexPublicKey)) {
         Serial.println("DH key published successfully as hex.");
+        return 1;
     } else {
         Serial.println("Failed to publish DH key.");
+        return -1;
     }
 }
 
-void sendPublicToServer(DH_KEY clientPublic, DH_KEY clientPrivate){
-    publishPublicKey(clientPublic, publicKeyTopic);
+bool sendPublicToServer(DH_KEY clientPublic, DH_KEY clientPrivate){
+    bool state = publishPublicKey(clientPublic, publicKeyTopic);
+    if(!state){
+        return -1;
+    }
     Serial.print("[PUBLIC KEY]: ");
     for (int i = 0; i < DH_KEY_LENGTH; i++) {
         Serial.printf("%02X", clientPublic[i]);  // Print as hex
     }
     Serial.println();
+    return 1;
 }
 
-void receivePublicFromServer(){
+bool receivePublicFromServer(){
     if (client.subscribe("encrypt/dhexchange-server")) {
         Serial.println("Subscribed to public key exchange topic.");
     } else {
         Serial.println("Failed to subscribe.");
+        return 0;
     }
+    if(serverPublicCheck(serverPublicKey) == 0){
+        return -1;
+    }
+    Serial.print("[RECEIVE KEY FROM SERVER]: ");
+    for (int i = 0; i < DH_KEY_LENGTH; i++) {
+        Serial.printf("%02X", serverPublicKey[i]);  // Print as hex
+    }
+    Serial.println();
+    return 1;
 }
 
-void generateSecretKey(){
-
+void generateSecretKey(DH_KEY clientPrivate, DH_KEY clientSecret){
+    DH_generate_key_secret(clientSecret, clientPrivate, serverPublicKey);
 }
 
-void performKeyExchange()
+int serverPublicCheck(DH_KEY serverPublicKey){
+    int sum = 0;
+    for(int i = 0; i < DH_KEY_LENGTH; i++){
+        sum += serverPublicKey[i];
+    }
+    return sum;
+}
+
+void performKeyExchange(unsigned char *key)
 {
     DH_KEY clientPublic, clientPrivate, clientSecret;
 
@@ -171,9 +198,10 @@ void performKeyExchange()
 	srand((unsigned int)seed);
 
     DH_generate_key_pair(clientPublic, clientPrivate);
+    while(!sendPublicToServer(clientPublic, clientPrivate));
+    while(!receivePublicFromServer());
 
-    sendPublicToServer(clientPublic, clientPrivate);
-    receivePublicFromServer();
-    generateSecretKey();
+    generateSecretKey(clientPrivate, clientSecret);
+    key = clientSecret;
 }
 #endif

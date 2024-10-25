@@ -30,6 +30,8 @@ void reconnect();
 uint8_t mqtt_setup();
 void publishFrame(Encrypt_Frame_t& frame, const char* topic, unsigned long long clen);
 String bytesToHexString(byte* payload, unsigned int length);
-void publishPublicKey(DH_KEY publicKey, const char* topic);
-void performKeyExchange();
+bool publishPublicKey(DH_KEY publicKey, const char* topic);
+int serverPublicCheck(DH_KEY serverPublicKey);
+void performKeyExchange(unsigned char *key);
+void generateSecretKey(DH_KEY clientPrivate, DH_KEY clientSecret);
 #endif // WIFI_CONFIG_H
