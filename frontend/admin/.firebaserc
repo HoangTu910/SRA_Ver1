@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "cloud-aiot",
+    "main": "cloud-aiot"
+  },
+  "targets": {},
+  "etags": {},
+  "dataconnectEmulatorConfig": {}
+}
