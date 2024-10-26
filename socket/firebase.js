@@ -2,7 +2,7 @@ var admin = require("firebase-admin");
 
 const {getFirestore} = require('firebase-admin/firestore')
 
-var serviceAccount = require("./central-cloud-for-aiot-firebase-adminsdk-beycw-c3f8f3a152.json");
+var serviceAccount = require("./cloud-aiot-firebase-adminsdk-ajjtt-3c3bd26b44.json");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)

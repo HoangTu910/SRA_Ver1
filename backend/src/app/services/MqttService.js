@@ -10,16 +10,103 @@ const TOPIC_HANDSHAKE_SYN = 'handshake/syn';
 const TOPIC_HANDSHAKE_SYN_ACK = 'handshake/syn-ack';
 const TOPIC_HANDSHAKE_ACK = 'handshake/ack';
 const DATA_TOPIC = 'sensors/data';
+const TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT = 'encrypt/dhexchange';
+const TOPIC_TO_PUBLIC_KEY_TO_CLIENT = 'encrypt/dhexchange-server';
 
 const SYN = Buffer.from([0xA1]); ;
 const SYN_ACK = Buffer.from([0xA2]); ;
-const ACK = Buffer.from([0xA3]); ;
+const ACK = Buffer.from([0xA3]); 
+
+let serverPublicKey = null;
+let serverPrivateKey = null;
+let serverSecret = null;
+let serverReceivePublic = null;
+
+const publicExecutablePath = path.resolve(__dirname, '../diffie-hellman/exec-public');
+const secretExecutablePath = path.resolve(__dirname, '../diffie-hellman/exec-secret');
 
 let client;
 let handshakeState = {
     initiated: false,
     completed: false,
 };
+
+// Function to generate public and private keys
+async function generatePublicPrivateKeys() {
+    return new Promise((resolve, reject) => {
+        execFile(publicExecutablePath, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error executing public/private key file: ${error.message}`);
+                return reject(error);
+            }
+
+            if (stderr) {
+                console.error(`stderr: ${stderr}`);
+                return reject(new Error(stderr));
+            }
+
+            console.log(`Output from public/private key C++ executable: \n${stdout}`);
+
+            const publicKeyMatch = stdout.match(/Public Key:\s([0-9a-f]+)/);
+            const privateKeyMatch = stdout.match(/Private Key:\s([0-9a-f]+)/);
+
+            if (publicKeyMatch && privateKeyMatch) {
+                const publicKey = publicKeyMatch[1];
+                const privateKey = privateKeyMatch[1];
+
+                console.log("Generated Public Key (Hex):", publicKey);
+                console.log("Generated Private Key (Hex):", privateKey);
+
+                resolve({ publicKey, privateKey });
+            } else {
+                reject(new Error("Could not find public/private keys in the output."));
+            }
+        });
+    });
+}
+
+// Function to generate the secret key
+async function generateSecretKey(myPrivateHex, anotherPublicHex) {
+    return new Promise((resolve, reject) => {
+        execFile(secretExecutablePath, [myPrivateHex, anotherPublicHex], (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error executing secret key file: ${error.message}`);
+                return reject(error);
+            }
+
+            if (stderr) {
+                console.error(`stderr: ${stderr}`);
+                return reject(new Error(stderr));
+            }
+
+            console.log(`Output from secret key C++ executable: \n${stdout}`);
+
+            const secretKeyMatch = stdout.match(/Secret Key:\s([0-9a-f]+)/);
+            if (secretKeyMatch) {
+                const secretKey = secretKeyMatch[1];
+                serverSecret = secretKey;
+                console.log("Generated Secret Key (Hex):", secretKey);
+                resolve(secretKey);
+            } else {
+                reject(new Error("Could not find the secret key in the output."));
+            }
+        });
+    });
+}
+
+(async () => {
+    try {
+        const { publicKey, privateKey } = await generatePublicPrivateKeys();
+        serverPublicKey = publicKey;
+        serverPrivateKey = privateKey;
+        console.log("Server Public Key (Hex):", serverPublicKey);
+        console.log("Server Private Key (Hex):", serverPrivateKey);
+
+    } catch (error) {
+        console.error("Error during key generation:", error.message);
+    }
+})();
+
 
 function reconstructDecryptedData(decryptedtext) {
     if (!decryptedtext) {
@@ -70,7 +157,6 @@ function reconstructDecryptedData(decryptedtext) {
     console.log("Final result: ", result);
     return result;
 }
-
 
 
 const decryptData = (encryptedData, nonce, key) => {
@@ -165,6 +251,13 @@ function initMQTT() {
                 console.log(`Subscribed to ${DATA_TOPIC}`);
             }
         });
+        client.subscribe(TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT, { qos: 1 }, (err) => {
+            if (err) {
+                console.error(`Failed to subscribe to ${TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT}:`, err);
+            } else {
+                console.log(`Subscribed to ${TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT}`);
+            }
+        });
     });
     
 
@@ -207,9 +300,9 @@ function initMQTT() {
                 //console.log('Data: ', data);
                 const encryptDataBuffer = Buffer.from(data.dataEncrypted);
                 const nonce = Buffer.from(data.nonce);
-                const key = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]);
-
-                const decryptedData = await decryptData(encryptDataBuffer, nonce, key);
+                // const key = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]);
+                serverSecret = generateSecretKey(serverPrivateKey, serverReceivePublic);
+                const decryptedData = await decryptData(encryptDataBuffer, nonce, serverSecret);
                 // console.log('Decrypted Data Length: ', decryptedData.length);
                 // console.log('Decrypted Data Buffer: ', decryptedData);
                 console.log('Decrypted Data (Hex): ', decryptedData.toString('hex'));
@@ -233,6 +326,20 @@ function initMQTT() {
                 console.log(`Processed message in ${endTime - startTime}ms`);
             } catch (e) {
                 console.error('Failed to parse message or write to Firestore:', e);
+            }
+        } else if(topic === TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT){
+            const data = message;
+            const publicKeyReceiveFromClient = Buffer.from(data);
+            serverReceivePublic = publicKeyReceiveFromClient
+            console.log('Public key received: ', serverReceivePublic);
+            if(serverReceivePublic != null){
+                client.publish(TOPIC_TO_PUBLIC_KEY_TO_CLIENT, serverPublicKey, { qos: 1 }, (err) => {
+                    if (err) {
+                        console.error('Failed to publish SERVER PUBLIC:', err);
+                    } else {
+                        console.log('Published SERVER PUBLIC');
+                    }
+                });
             }
         }
     });
