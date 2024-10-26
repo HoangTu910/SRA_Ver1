@@ -39,7 +39,7 @@ function Login() {
 
         // Make a request to the backend server
         const response = await axios.post(
-          "http://113.161.225.11:6969/api/user/login",
+          "http://113.161.225.11:7979/api/user/login",
           { email, password, token: idToken },
           {
             headers: {
@@ -80,7 +80,7 @@ function Login() {
       setSuccess('');
       const result = await signInWithPopup(auth, provider);
       const token = await result.user.getIdToken();
-      await fetch('http://localhost:6969/api/user/login', {
+      await fetch('http://113.161.225.11:7979/api/user/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

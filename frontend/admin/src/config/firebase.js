@@ -4,14 +4,15 @@ import { getAnalytics } from "firebase/analytics";
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
-    apiKey: "AIzaSyAtBUaAZXUJhJ-iaex7orGSng4SXkuReSM",
-    authDomain: "central-cloud-for-aiot.firebaseapp.com",
-    projectId: "central-cloud-for-aiot",
-    storageBucket: "central-cloud-for-aiot.appspot.com",
-    messagingSenderId: "556407845718",
-    appId: "1:556407845718:web:618387e53947a77c911cf7",
-    measurementId: "G-3W9K4ZE463"
+  apiKey: "AIzaSyAsuogNa0lKBxy8Hftd6hb-M0HrfguBems",
+  authDomain: "cloud-aiot.firebaseapp.com",
+  projectId: "cloud-aiot",
+  storageBucket: "cloud-aiot.appspot.com",
+  messagingSenderId: "293880461791",
+  appId: "1:293880461791:web:fe4f6a91bea6cda7932c6a",
+  measurementId: "G-CEX6QVDFFR"
 };
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
