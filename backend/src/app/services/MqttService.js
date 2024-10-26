@@ -68,23 +68,38 @@ async function generatePublicPrivateKeys() {
 // Function to generate the secret key
 async function generateSecretKey(myPrivateHex, anotherPublicHex) {
     return new Promise((resolve, reject) => {
-        execFile(secretExecutablePath, [myPrivateHex, anotherPublicHex], (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Error executing secret key file: ${error.message}`);
-                return reject(error);
+        console.error(`Generating secret...`);
+        
+        const secretExecutablePath = '/home/iot-bts2/HHT_AIT/backend/src/app/diffie-hellman/exec-secret';
+        const process = execFile(secretExecutablePath);
+
+        // Write the input to stdin in the same format as the echo command
+        process.stdin.write(`${myPrivateHex} ${anotherPublicHex}\n`);
+        process.stdin.end();
+
+        const timeout = setTimeout(() => {
+            process.kill();
+            reject(new Error("Process timed out"));
+        }, 10000); // Increase the timeout as needed
+
+        let output = '';
+        process.stdout.on('data', (data) => {
+            output += data.toString();
+        });
+
+        process.stderr.on('data', (data) => {
+            console.error(`stderr: ${data}`);
+        });
+
+        process.on('close', (code) => {
+            clearTimeout(timeout);
+            if (code !== 0) {
+                return reject(new Error(`Process exited with code ${code}`));
             }
 
-            if (stderr) {
-                console.error(`stderr: ${stderr}`);
-                return reject(new Error(stderr));
-            }
-
-            console.log(`Output from secret key C++ executable: \n${stdout}`);
-
-            const secretKeyMatch = stdout.match(/Secret Key:\s([0-9a-f]+)/);
+            const secretKeyMatch = output.trim().match(/[0-9a-fA-F]+/);
             if (secretKeyMatch) {
-                const secretKey = secretKeyMatch[1];
-                serverSecret = secretKey;
+                const secretKey = secretKeyMatch[0];
                 console.log("Generated Secret Key (Hex):", secretKey);
                 resolve(secretKey);
             } else {
@@ -93,6 +108,7 @@ async function generateSecretKey(myPrivateHex, anotherPublicHex) {
         });
     });
 }
+
 
 (async () => {
     try {
@@ -301,7 +317,8 @@ function initMQTT() {
                 const encryptDataBuffer = Buffer.from(data.dataEncrypted);
                 const nonce = Buffer.from(data.nonce);
                 // const key = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]);
-                serverSecret = generateSecretKey(serverPrivateKey, serverReceivePublic);
+                serverSecret = await generateSecretKey(serverPrivateKey, serverReceivePublic);
+                
                 const decryptedData = await decryptData(encryptDataBuffer, nonce, serverSecret);
                 // console.log('Decrypted Data Length: ', decryptedData.length);
                 // console.log('Decrypted Data Buffer: ', decryptedData);
@@ -328,12 +345,13 @@ function initMQTT() {
                 console.error('Failed to parse message or write to Firestore:', e);
             }
         } else if(topic === TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT){
-            const data = message;
-            const publicKeyReceiveFromClient = Buffer.from(data);
+            const hexData = message.toString('hex');
+            const messageBuffer = Buffer.from(hexData, 'hex'); 
+            const publicKeyReceiveFromClient = messageBuffer;
             serverReceivePublic = publicKeyReceiveFromClient
-            console.log('Public key received: ', serverReceivePublic);
+            console.log('Public key received: ', serverReceivePublic.toString());
             if(serverReceivePublic != null){
-                client.publish(TOPIC_TO_PUBLIC_KEY_TO_CLIENT, serverPublicKey, { qos: 1 }, (err) => {
+                client.publish(TOPIC_TO_PUBLIC_KEY_TO_CLIENT, serverPublicKey.toString('hex'), { qos: 1 }, (err) => {
                     if (err) {
                         console.error('Failed to publish SERVER PUBLIC:', err);
                     } else {
