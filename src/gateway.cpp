@@ -20,7 +20,7 @@ const char* dataTopic = "sensors/data";
 const char* publicKeyTopic = "encrypt/dhexchange";
 
 bool receivedSynAck = false; 
-
+bool isReceivePublicFromServer;
 // DH_KEY serverPublicKey;
 // WiFi and MQTT client objects
 WiFiClient espClient;
@@ -123,7 +123,7 @@ String bytesToHexString(byte* payload, unsigned int length) {
     String hexString = "";
     for (int i = 0; i < length; i++) {
         if (payload[i] < 0x10) {
-            hexString += "0"; // Add leading zero if necessary
+            hexString += "0"; 
         }
         hexString += String(payload[i], HEX);
     }
@@ -149,7 +149,7 @@ bool publishPublicKey(DH_KEY publicKey, const char *topic) {
 bool sendPublicToServer(DH_KEY clientPublic, DH_KEY clientPrivate){
     bool state = publishPublicKey(clientPublic, publicKeyTopic);
     if(!state){
-        return -1;
+        return 0;
     }
     Serial.print("[PUBLIC KEY]: ");
     for (int i = 0; i < DH_KEY_LENGTH; i++) {
@@ -166,18 +166,30 @@ bool receivePublicFromServer(){
         Serial.println("Failed to subscribe.");
         return 0;
     }
-    if(serverPublicCheck(serverPublicKey) == 0){
-        return -1;
+    if(!isReceivePublicFromServer){
+        return 0;
     }
     Serial.print("[RECEIVE KEY FROM SERVER]: ");
     for (int i = 0; i < DH_KEY_LENGTH; i++) {
-        Serial.printf("%02X", serverPublicKey[i]);  // Print as hex
+        Serial.printf("%02X", serverPublicKey[i]); 
     }
     Serial.println();
     return 1;
 }
 
+void subscribeToKeyExchangeTopic(){
+    if (client.subscribe("encrypt/dhexchange-server")) {
+        Serial.println("Subscribed to public key exchange topic.");
+    } else {
+        Serial.println("Failed to subscribe.");
+    }
+}
+
 void generateSecretKey(DH_KEY clientPrivate, DH_KEY clientSecret){
+    Serial.print("Key before generate: ");
+    for(int i = 0; i < DH_KEY_LENGTH; i++){
+        Serial.print(serverPublicKey[i], HEX);
+    }
     DH_generate_key_secret(clientSecret, clientPrivate, serverPublicKey);
 }
 
@@ -198,10 +210,12 @@ void performKeyExchange(unsigned char *key)
 	srand((unsigned int)seed);
 
     DH_generate_key_pair(clientPublic, clientPrivate);
-    while(!sendPublicToServer(clientPublic, clientPrivate));
-    while(!receivePublicFromServer());
-
+    sendPublicToServer(clientPublic, clientPrivate);
+    subscribeToKeyExchangeTopic();
+    receivePublicFromServer();
     generateSecretKey(clientPrivate, clientSecret);
-    key = clientSecret;
+    for(int i = 0; i < DH_KEY_LENGTH; i++){
+        key[i] = clientSecret[i];
+    }
 }
 #endif
