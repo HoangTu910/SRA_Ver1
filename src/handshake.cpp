@@ -54,28 +54,30 @@ void ThreeWayHandshake::mqttCallback(char* topic, byte* payload, unsigned int le
         } else {
             Serial.println("SYN-ACK mismatch. Expected: " + String(SERVER_SYN_ACK, HEX) + ", Received: " + mesHex);
         }
-    } else if (strcmp(topic, "encrypt/dhexchange-server") == 0) { 
-        for (int i = 0; i < DH_KEY_LENGTH; i++) {
-            String byteString = mesHex.substring(i * 4, (i * 4) + 4);
-            String firstByte = byteString.substring(0, 2);
-            String secondByte = byteString.substring(2, 4);
-            int first_byte = strtol(firstByte.c_str(), nullptr, 16); 
-            // Serial.print("First: ");
-            // Serial.println(first_byte);
-            int second_byte = strtol(secondByte.c_str(), nullptr, 16);
-            // Serial.print("Second: ");
-            // Serial.println(second_byte);
-            int firstValue = (char(first_byte) >= '0' && char(first_byte) <= '9') ? (char(first_byte) - '0') : (char(first_byte) - 'a' + 10);
-            int secondValue = (char(second_byte) >= '0' && char(second_byte) <= '9') ? (char(second_byte) - '0') : (char(second_byte) - 'a' + 10);
-            serverPublicKey[i] = (firstValue << 4) | secondValue; 
-        }
-        Serial.println();
-        Serial.print("Received Server Public Key: ");
-        for (int i = 0; i < DH_KEY_LENGTH; i++) {
-            Serial.printf("%02X", serverPublicKey[i]);
-        }
-        Serial.println();
     }
+    // } else if (strcmp(topic, "encrypt/dhexchange-server") == 0) { 
+    //     for (int i = 0; i < DH_KEY_LENGTH; i++) {
+    //         String byteString = mesHex.substring(i * 4, (i * 4) + 4);
+    //         String firstByte = byteString.substring(0, 2);
+    //         String secondByte = byteString.substring(2, 4);
+    //         int first_byte = strtol(firstByte.c_str(), nullptr, 16); 
+    //         // Serial.print("First: ");
+    //         // Serial.println(first_byte);
+    //         int second_byte = strtol(secondByte.c_str(), nullptr, 16);
+    //         // Serial.print("Second: ");
+    //         // Serial.println(second_byte);
+    //         int firstValue = (char(first_byte) >= '0' && char(first_byte) <= '9') ? (char(first_byte) - '0') : (char(first_byte) - 'a' + 10);
+    //         int secondValue = (char(second_byte) >= '0' && char(second_byte) <= '9') ? (char(second_byte) - '0') : (char(second_byte) - 'a' + 10);
+    //         serverPublicKey[i] = (firstValue << 4) | secondValue; 
+    //     }
+    //     Serial.println();
+    //     Serial.print("Received Server Public Key: ");
+    //     for (int i = 0; i < DH_KEY_LENGTH; i++) {
+    //         Serial.printf("%02X", serverPublicKey[i]);
+    //     }
+    //     Serial.println();
+    //     isReceivePublicFromServer = true;
+    // }
     else {
         Serial.print("Topic did not match ");
         Serial.println(String(topic));

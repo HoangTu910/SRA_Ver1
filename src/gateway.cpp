@@ -20,7 +20,7 @@ const char* dataTopic = "sensors/data";
 const char* publicKeyTopic = "encrypt/dhexchange";
 
 bool receivedSynAck = false; 
-bool isReceivePublicFromServer;
+bool isReceivePublicFromServer = false;
 // DH_KEY serverPublicKey;
 // WiFi and MQTT client objects
 WiFiClient espClient;
@@ -149,6 +149,7 @@ bool publishPublicKey(DH_KEY publicKey, const char *topic) {
 bool sendPublicToServer(DH_KEY clientPublic, DH_KEY clientPrivate){
     bool state = publishPublicKey(clientPublic, publicKeyTopic);
     if(!state){
+        Serial.println("Error: Cannot publish key");
         return 0;
     }
     Serial.print("[PUBLIC KEY]: ");
@@ -159,23 +160,91 @@ bool sendPublicToServer(DH_KEY clientPublic, DH_KEY clientPrivate){
     return 1;
 }
 
+// bool receivePublicFromServer(){
+//     if (client.subscribe("encrypt/dhexchange-server")) {
+//         Serial.println("Subscribed to public key exchange topic.");
+//     } else {
+//         Serial.println("Error: Failed to subscribe to server.");
+//         return 0;
+//     }
+//     if(!isReceivePublicFromServer){
+//         Serial.println("Error: Cannot receive public from server.");
+//         return 0;
+//     }
+//     isReceivePublicFromServer = false;
+//     Serial.print("[RECEIVE KEY FROM SERVER]: ");
+//     for (int i = 0; i < DH_KEY_LENGTH; i++) {
+//         Serial.printf("%02X", serverPublicKey[i]); 
+//     }
+//     Serial.println();
+//     return 1;
+// }
+
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+    String mesHex = bytesToHexString(payload, length);
+    // Serial.print("Message in HEX: ");
+    // Serial.println(mesHex);
+    if (strcmp(topic, "encrypt/dhexchange-server") == 0) { 
+        for (int i = 0; i < DH_KEY_LENGTH; i++) {
+            String byteString = mesHex.substring(i * 4, (i * 4) + 4);
+            String firstByte = byteString.substring(0, 2);
+            String secondByte = byteString.substring(2, 4);
+            int first_byte = strtol(firstByte.c_str(), nullptr, 16); 
+            // Serial.print("First: ");
+            // Serial.println(first_byte);
+            int second_byte = strtol(secondByte.c_str(), nullptr, 16);
+            // Serial.print("Second: ");
+            // Serial.println(second_byte);
+            int firstValue = (char(first_byte) >= '0' && char(first_byte) <= '9') ? (char(first_byte) - '0') : (char(first_byte) - 'a' + 10);
+            int secondValue = (char(second_byte) >= '0' && char(second_byte) <= '9') ? (char(second_byte) - '0') : (char(second_byte) - 'a' + 10);
+            serverPublicKey[i] = (firstValue << 4) | secondValue; 
+        }
+        Serial.print("Received Server Public Key: ");
+        for (int i = 0; i < DH_KEY_LENGTH; i++) {
+            Serial.printf("%02X", serverPublicKey[i]);
+        }
+        Serial.println();
+        isReceivePublicFromServer = true;
+    }
+    else {
+        Serial.print("Topic did not match ");
+        Serial.println(String(topic));
+    }
+}
+
 bool receivePublicFromServer(){
+    // Subscribe to the public key exchange topic
     if (client.subscribe("encrypt/dhexchange-server")) {
         Serial.println("Subscribed to public key exchange topic.");
     } else {
-        Serial.println("Failed to subscribe.");
-        return 0;
+        Serial.println("Error: Failed to subscribe to server.");
+        return false;
     }
-    if(!isReceivePublicFromServer){
-        return 0;
+
+    // Set callback for handling messages
+    client.setCallback(mqttCallback);
+
+    // Wait for the message with a timeout
+    unsigned long startTime = millis();
+    const unsigned long timeout = 5000; // 5 seconds timeout
+
+    while (!isReceivePublicFromServer && (millis() - startTime) < timeout) {
+        client.loop(); // Ensure client processes incoming messages
+        delay(10);     // Small delay to prevent a tight loop
     }
-    Serial.print("[RECEIVE KEY FROM SERVER]: ");
-    for (int i = 0; i < DH_KEY_LENGTH; i++) {
-        Serial.printf("%02X", serverPublicKey[i]); 
+
+    // Check if we received the message within the timeout period
+    if (!isReceivePublicFromServer) {
+        Serial.println("Error: Timed out waiting for public key from server.");
+        return false;
     }
-    Serial.println();
-    return 1;
+
+    // Reset flag for the next message
+    isReceivePublicFromServer = false;
+    return true;
 }
+
+
 
 void subscribeToKeyExchangeTopic(){
     if (client.subscribe("encrypt/dhexchange-server")) {
@@ -186,11 +255,12 @@ void subscribeToKeyExchangeTopic(){
 }
 
 void generateSecretKey(DH_KEY clientPrivate, DH_KEY clientSecret){
-    Serial.print("Key before generate: ");
-    for(int i = 0; i < DH_KEY_LENGTH; i++){
-        Serial.print(serverPublicKey[i], HEX);
-    }
+    // Serial.print("Key before generate: ");
+    // for(int i = 0; i < DH_KEY_LENGTH; i++){
+    //     Serial.print(serverPublicKey[i], HEX);
+    // }
     DH_generate_key_secret(clientSecret, clientPrivate, serverPublicKey);
+    // Serial.println();
 }
 
 int serverPublicCheck(DH_KEY serverPublicKey){
@@ -201,7 +271,7 @@ int serverPublicCheck(DH_KEY serverPublicKey){
     return sum;
 }
 
-void performKeyExchange(unsigned char *key)
+bool performKeyExchange(unsigned char *key)
 {
     DH_KEY clientPublic, clientPrivate, clientSecret;
 
@@ -210,12 +280,22 @@ void performKeyExchange(unsigned char *key)
 	srand((unsigned int)seed);
 
     DH_generate_key_pair(clientPublic, clientPrivate);
-    sendPublicToServer(clientPublic, clientPrivate);
-    subscribeToKeyExchangeTopic();
-    receivePublicFromServer();
+    // subscribeToKeyExchangeTopic();
+    if(!sendPublicToServer(clientPublic, clientPrivate)){
+        Serial.println("Error: Cannot send public to server");
+        return 0;
+    }
+    Serial.println("Sended public to server");
+    if(!receivePublicFromServer()){
+        Serial.println("Error: Cannot receive public to server");
+        return 0;
+    }
+    Serial.println("Received public to server");
     generateSecretKey(clientPrivate, clientSecret);
     for(int i = 0; i < DH_KEY_LENGTH; i++){
         key[i] = clientSecret[i];
     }
+    Serial.println("Key exchange completed!");
+    return 1;
 }
 #endif

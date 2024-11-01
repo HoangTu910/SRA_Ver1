@@ -20,6 +20,8 @@ extern DH_KEY serverPublicKey;
 extern const char* dataTopic;
 extern const char* publicKeyTopic;
 
+extern bool isReceivePublicFromServer;
+
 extern WiFiClient espClient;
 extern PubSubClient client;
 
@@ -32,6 +34,7 @@ void publishFrame(Encrypt_Frame_t& frame, const char* topic, unsigned long long 
 String bytesToHexString(byte* payload, unsigned int length);
 bool publishPublicKey(DH_KEY publicKey, const char* topic);
 int serverPublicCheck(DH_KEY serverPublicKey);
-void performKeyExchange(unsigned char *key);
+bool performKeyExchange(unsigned char *key);
 void generateSecretKey(DH_KEY clientPrivate, DH_KEY clientSecret);
+void mqttCallback(char* topic, byte* payload, unsigned int length);
 #endif // WIFI_CONFIG_H

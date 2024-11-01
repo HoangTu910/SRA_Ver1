@@ -22,7 +22,7 @@ uint8_t receivePacket(uint8_t expectedData, uint32_t timeout);
 uint8_t sendPacket(); // later
 uint8_t receiveThreeWayHandshake();
 
-extern bool isReceivePublicFromServer;
+// extern bool isReceivePublicFromServer;
 
 class ThreeWayHandshake {
 public:

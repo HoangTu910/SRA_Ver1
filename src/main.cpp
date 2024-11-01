@@ -19,6 +19,8 @@ int clenForTrans;
 TFLiteModel tfliteModel;
 ThreeWayHandshake handshake(Serial1, 5000);
 
+unsigned char key[DH_KEY_LENGTH];
+
 void test_ascon_encryption_decryption();
 void VerifyInterpreterReset();
 void AggregateData(dataToProcess* data, Frame_t* received_frame);
@@ -44,6 +46,9 @@ void loop() {
     bool isAnomaly = false;
     unsigned long long clen;
     Serial.println("----------Three way handshake---------");
+    //Thuc hien trao doi key o ben ngoai nay, && voi handshake
+    while(!performKeyExchange(key)) delay(1000);
+    
     if (handshake.performHandshake(COMMAND_SYN, COMMAND_SYN_ACK, COMMAND_ACK)) {
         if(!ParseFrameProcess(&received_frame)) return;
         //Setup model
@@ -60,7 +65,7 @@ void loop() {
                 Serial.println("Aggregate completed! Sending...");
                 ProcessAverage(&received_frame, &metricsData, dataCount);
                 transitionFrame(received_frame, &encrypted_frame);
-                int encryptResult = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
+                int encryptResult = encryptDataPacket(&received_frame, &encrypted_frame, &clen, key);
                 if(encryptResult && handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
                     publishFrame(encrypted_frame, dataTopic, clen);
                 }
@@ -69,7 +74,7 @@ void loop() {
             Serial.println("Anomaly Detected! Encrypt and update");
             received_frame.dataPacket.data[ANOMALY] = 1;
             transitionFrame(received_frame, &encrypted_frame);
-            int encryptResult = encryptDataPacket(&received_frame, &encrypted_frame, &clen);
+            int encryptResult = encryptDataPacket(&received_frame, &encrypted_frame, &clen, key);
             ResetCompleteStruct(&metricsData);
             resetData(&dataCount);
             if(encryptResult && handshake.handshakeWithServer(SERVER_COMMAND_SYN, SERVER_SYN_ACK, SERVER_COMMAND_ACK)){
@@ -77,7 +82,7 @@ void loop() {
             }
         }
     } else {
-        Serial.println("Handshake failed.");
+        Serial.println("Error: Handshake Failed!");
         return;
     }
 }
