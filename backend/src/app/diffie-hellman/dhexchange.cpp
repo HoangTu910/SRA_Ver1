@@ -180,7 +180,7 @@ void DH_generate_key_pair(DH_KEY public_key, DH_KEY private_key)
 	/* generate random private key */
 	int i;
 	for (i = 0; i < DH_KEY_LENGTH; i++) {
-		private_key[i] = 1 & 0xFF;
+		private_key[i] = rand() & 0xFF;
 	}
 
 	/* pub_key = G^prv_key mod P*/
