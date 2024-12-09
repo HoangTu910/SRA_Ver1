@@ -17,6 +17,7 @@ The system will focus on server management system, information security, optimiz
 
 ## System Design
 The overview of the system display below. Each part in the system will have it specific design (will be explained detail in other part). 
+
 ![ảnh](https://github.com/user-attachments/assets/6bdeff4e-4f1d-4b6b-9ae9-6e9704693054)
 
 
