@@ -13,9 +13,9 @@ const DATA_TOPIC = 'sensors/data';
 const TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT = 'encrypt/dhexchange';
 const TOPIC_TO_PUBLIC_KEY_TO_CLIENT = 'encrypt/dhexchange-server';
 
-const SYN = Buffer.from([0xA1]); ;
-const SYN_ACK = Buffer.from([0xA2]); ;
-const ACK = Buffer.from([0xA3]); 
+const SYN = Buffer.from([0xA1]);;
+const SYN_ACK = Buffer.from([0xA2]);;
+const ACK = Buffer.from([0xA3]);
 
 let serverPublicKey = null;
 let serverPrivateKey = null;
@@ -69,7 +69,7 @@ async function generatePublicPrivateKeys() {
 async function generateSecretKey(myPrivateHex, anotherPublicHex) {
     return new Promise((resolve, reject) => {
         console.error(`Generating secret...`);
-        
+
         const secretExecutablePath = '/home/iot-bts2/HHT_AIT/backend/src/app/diffie-hellman/exec-secret';
         const process = execFile(secretExecutablePath);
         console.log("My Private Key (Hex):", myPrivateHex);
@@ -81,7 +81,7 @@ async function generateSecretKey(myPrivateHex, anotherPublicHex) {
         const timeout = setTimeout(() => {
             process.kill();
             reject(new Error("Process timed out"));
-        }, 10000); // Increase the timeout as needed
+        }, 10000); 
 
         let output = '';
         process.stdout.on('data', (data) => {
@@ -179,12 +179,12 @@ function reconstructDecryptedData(decryptedtext) {
 const decryptData = (encryptedData, nonce, key) => {
     return new Promise((resolve, reject) => {
         const binaryPath = path.join(__dirname, '../cryptography/src/decrypt_binary');
-        
+
         // Convert inputs to hex strings
         const encryptedHex = Buffer.from(encryptedData).toString('hex');
         const nonceHex = Buffer.from(nonce).toString('hex');
         const keyHex = key;
-        
+
         const args = [encryptedHex, nonceHex, keyHex];
 
         execFile(binaryPath, args, { env: { LD_LIBRARY_PATH: path.join(__dirname, '../cryptography/src') } }, (error, stdout, stderr) => {
@@ -193,7 +193,7 @@ const decryptData = (encryptedData, nonce, key) => {
                 console.error('Standard Error Output:', stderr);
                 return reject(error);
             }
-            console.log('Standard Output:', stdout); 
+            console.log('Standard Output:', stdout);
             const lines = stdout.trim().split('\n');
             const decryptionCompletedCheckLine = lines[0];
             const decryptedDataLine = lines[1];
@@ -204,14 +204,14 @@ const decryptData = (encryptedData, nonce, key) => {
                 resolve(decryptedBuffer);
             } else {
                 reject(new Error('Decryption failed'));
-            } 
+            }
         });
     });
 };
 
 
 const encodedPassword = Buffer.from('123').toString('base64');
-console.log(`Encoded Password: ${encodedPassword}`); 
+console.log(`Encoded Password: ${encodedPassword}`);
 
 const options = {
     username: 'admin', // Correct username
@@ -276,14 +276,14 @@ function initMQTT() {
             }
         });
     });
-    
+
 
     client.on('message', async (topic, message) => {
         const startTime = Date.now();
         const hexData = message.toString('hex'); // Convert message to HEX string
-        const messageBuffer = Buffer.from(hexData, 'hex'); 
+        const messageBuffer = Buffer.from(hexData, 'hex');
         //console.log(`Raw ${topic}:`, messageBuffer);
-        
+
         if (topic === 'handshake/syn') {
             // Handle SYN from ESP32
             console.log('Handshake SYN received.');
@@ -338,20 +338,20 @@ function initMQTT() {
                     acceleration: result.acceleration,
                     isanomaly: result.isanomaly
                 };
-                
+
                 await DeviceDataService.createDeviceData(uploadData, result.deviceId);
                 const endTime = Date.now();
                 console.log(`Processed message in ${endTime - startTime}ms`);
             } catch (e) {
                 console.error('Failed to parse message or write to Firestore:', e);
             }
-        } else if(topic === TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT){
+        } else if (topic === TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT) {
             const hexData = message.toString('hex');
-            const messageBuffer = Buffer.from(hexData, 'hex'); 
+            const messageBuffer = Buffer.from(hexData, 'hex');
             const publicKeyReceiveFromClient = messageBuffer;
             serverReceivePublic = publicKeyReceiveFromClient.toString();
             console.log('Public key received: ', serverReceivePublic.toString());
-            if(serverReceivePublic != null){
+            if (serverReceivePublic != null) {
                 client.publish(TOPIC_TO_PUBLIC_KEY_TO_CLIENT, serverPublicKey.toString('hex'), { qos: 1 }, (err) => {
                     if (err) {
                         console.error('Failed to publish SERVER PUBLIC:', err);
