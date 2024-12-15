@@ -114,11 +114,11 @@ uint8_t transitionFrame(Frame_t frame, Encrypt_Frame_t *en_frame)
     return 0;
 }
 
-int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame, unsigned long long* getLen, unsigned char key[DH_KEY_LENGTH])
+int encryptDataPacket(Frame_t *frame, Encrypt_Frame_t *en_frame, unsigned long long* getLen, unsigned char key[ECC_PUB_KEY_SIZE])
 {
     //Key exchange
     Serial.print("[KEY ENCRYPT FROM CLIENT]: ");
-    for(int i = 0; i < 16; i++){
+    for(int i = 0; i < ECC_PUB_KEY_SIZE; i++){
         Serial.print(key[i], HEX);
     }
     Serial.println();

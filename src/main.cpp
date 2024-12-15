@@ -19,7 +19,7 @@ int clenForTrans;
 TFLiteModel tfliteModel;
 ThreeWayHandshake handshake(Serial1, 5000);
 
-unsigned char key[DH_KEY_LENGTH];
+unsigned char key[ECC_PUB_KEY_SIZE];
 
 void test_ascon_encryption_decryption();
 void VerifyInterpreterReset();
@@ -87,6 +87,59 @@ void loop() {
     }
 }
 
+void VerifyInterpreterReset(){
+    if (tfliteModel.interpreter == nullptr) {
+        Serial.println("Re-initializing interpreter...");
+        if (!tfliteModel.Initialize()) {
+            Serial.println("Failed to re-setup interpreter.");
+            return;
+        }
+    }
+}
+
+void AggregateData(dataToProcess* data, Frame_t* received_frame){
+    data->heartRate.dataSum += received_frame->dataPacket.data[HEART_RATE];
+    data->spO2.dataSum += received_frame->dataPacket.data[SPO2];
+    data->temperature.dataSum += received_frame->dataPacket.data[TEMPERATURE];
+    data->accelerator.dataSum += received_frame->dataPacket.data[ACCELEROMETER];
+}
+
+void ProcessAverage(Frame_t* received_frame, dataToProcess* data, uint16_t &dataCount){
+    received_frame->dataPacket.data[HEART_RATE] = data->heartRate.dataSum / dataCount;
+    received_frame->dataPacket.data[SPO2] = data->spO2.dataSum / dataCount;
+    received_frame->dataPacket.data[TEMPERATURE] = data->temperature.dataSum / dataCount;
+    received_frame->dataPacket.data[ACCELEROMETER] = data->accelerator.dataSum / dataCount;
+
+    resetData(&data->heartRate.dataSum);
+    resetData(&data->spO2.dataSum);
+    resetData(&data->temperature.dataSum);
+    resetData(&data->accelerator.dataSum);
+    resetData(&dataCount);
+}
+
+bool IsFinishedAggregate(unsigned long* currentMillis, unsigned long* previousMillis, const long timeInterval){
+    if (*currentMillis - *previousMillis >= timeInterval) {
+        *previousMillis = *currentMillis;  
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void ResetCompleteStruct(dataToProcess* metricsData){
+    metricsData->accelerator.dataSum = RESET_STATE;
+    metricsData->heartRate.dataSum = RESET_STATE;
+    metricsData->spO2.dataSum = RESET_STATE;
+    metricsData->temperature.dataSum = RESET_STATE;
+}
+
+void ExecutePredictionModel(Frame_t &received_frame, bool* isAnomaly)
+{
+    tfliteModel.PerformInference(received_frame.dataPacket.data[HEART_RATE], 
+                                     received_frame.dataPacket.data[ACCELEROMETER], 
+                                     received_frame.dataPacket.data[TEMPERATURE], 
+                                     &*isAnomaly); //run model
+}
 
 //Definition
 void test_ascon_encryption_decryption() {
@@ -142,58 +195,4 @@ void test_ascon_encryption_decryption() {
         Serial.println("Decryption failed!");
     }
     clenForTrans = clen;
-}
-
-void VerifyInterpreterReset(){
-    if (tfliteModel.interpreter == nullptr) {
-        Serial.println("Re-initializing interpreter...");
-        if (!tfliteModel.Initialize()) {
-            Serial.println("Failed to re-setup interpreter.");
-            return;
-        }
-    }
-}
-
-void AggregateData(dataToProcess* data, Frame_t* received_frame){
-    data->heartRate.dataSum += received_frame->dataPacket.data[HEART_RATE];
-    data->spO2.dataSum += received_frame->dataPacket.data[SPO2];
-    data->temperature.dataSum += received_frame->dataPacket.data[TEMPERATURE];
-    data->accelerator.dataSum += received_frame->dataPacket.data[ACCELEROMETER];
-}
-
-void ProcessAverage(Frame_t* received_frame, dataToProcess* data, uint16_t &dataCount){
-    received_frame->dataPacket.data[HEART_RATE] = data->heartRate.dataSum / dataCount;
-    received_frame->dataPacket.data[SPO2] = data->spO2.dataSum / dataCount;
-    received_frame->dataPacket.data[TEMPERATURE] = data->temperature.dataSum / dataCount;
-    received_frame->dataPacket.data[ACCELEROMETER] = data->accelerator.dataSum / dataCount;
-
-    resetData(&data->heartRate.dataSum);
-    resetData(&data->spO2.dataSum);
-    resetData(&data->temperature.dataSum);
-    resetData(&data->accelerator.dataSum);
-    resetData(&dataCount);
-}
-
-bool IsFinishedAggregate(unsigned long* currentMillis, unsigned long* previousMillis, const long timeInterval){
-    if (*currentMillis - *previousMillis >= timeInterval) {
-        *previousMillis = *currentMillis;  
-        return true;
-    } else {
-        return false;
-    }
-}
-
-void ResetCompleteStruct(dataToProcess* metricsData){
-    metricsData->accelerator.dataSum = RESET_STATE;
-    metricsData->heartRate.dataSum = RESET_STATE;
-    metricsData->spO2.dataSum = RESET_STATE;
-    metricsData->temperature.dataSum = RESET_STATE;
-}
-
-void ExecutePredictionModel(Frame_t &received_frame, bool* isAnomaly)
-{
-    tfliteModel.PerformInference(received_frame.dataPacket.data[HEART_RATE], 
-                                     received_frame.dataPacket.data[ACCELEROMETER], 
-                                     received_frame.dataPacket.data[TEMPERATURE], 
-                                     &*isAnomaly); //run model
 }

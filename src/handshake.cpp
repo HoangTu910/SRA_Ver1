@@ -2,7 +2,7 @@
 #define _HANDSHAKE_H
 #include "handshake.h"
 
-DH_KEY serverPublicKey = {0};
+uint8_t serverPublicKey[ECC_PUB_KEY_SIZE] = {0};
 ThreeWayHandshake::ThreeWayHandshake(HardwareSerial &serialPort, uint32_t timeoutDuration)
     : serial(serialPort), timeout(timeoutDuration) {}
 

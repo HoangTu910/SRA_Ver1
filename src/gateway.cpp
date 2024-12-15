@@ -21,6 +21,44 @@ const char* publicKeyTopic = "encrypt/dhexchange";
 
 bool receivedSynAck = false; 
 bool isReceivePublicFromServer = false;
+
+typedef struct
+{
+  uint32_t a;
+  uint32_t b;
+  uint32_t c;
+  uint32_t d;
+} prng_t;
+
+static prng_t prng_ctx;
+
+static uint32_t prng_rotate(uint32_t x, uint32_t k)
+{
+  return (x << k) | (x >> (32 - k)); 
+}
+
+static uint32_t prng_next(void)
+{
+  uint32_t e = prng_ctx.a - prng_rotate(prng_ctx.b, 27); 
+  prng_ctx.a = prng_ctx.b ^ prng_rotate(prng_ctx.c, 17); 
+  prng_ctx.b = prng_ctx.c + prng_ctx.d;
+  prng_ctx.c = prng_ctx.d + e; 
+  prng_ctx.d = e + prng_ctx.a;
+  return prng_ctx.d;
+}
+
+static void prng_init(uint32_t seed)
+{
+  uint32_t i;
+  prng_ctx.a = 0xf1ea5eed;
+  prng_ctx.b = prng_ctx.c = prng_ctx.d = seed;
+
+  for (i = 0; i < 31; ++i) 
+  {
+    (void) prng_next();
+  }
+}
+
 // DH_KEY serverPublicKey;
 // WiFi and MQTT client objects
 WiFiClient espClient;
@@ -130,12 +168,12 @@ String bytesToHexString(byte* payload, unsigned int length) {
     return hexString;
 }
 
-bool publishPublicKey(DH_KEY publicKey, const char *topic) {
-    char hexPublicKey[2 * DH_KEY_LENGTH + 1];
-    for (int i = 0; i < DH_KEY_LENGTH; i++) {
+bool publishPublicKey(uint8_t publicKey[ECC_PUB_KEY_SIZE], const char *topic) {
+    char hexPublicKey[2 * ECC_PUB_KEY_SIZE + 1];
+    for (int i = 0; i < ECC_PUB_KEY_SIZE; i++) {
         sprintf(hexPublicKey + 2 * i, "%02x", publicKey[i]);
     }
-    hexPublicKey[2 * DH_KEY_LENGTH] = '\0'; 
+    hexPublicKey[2 * ECC_PUB_KEY_SIZE] = '\0'; 
     
     if (client.publish(publicKeyTopic, hexPublicKey)) {
         Serial.println("DH key published successfully as hex.");
@@ -146,14 +184,14 @@ bool publishPublicKey(DH_KEY publicKey, const char *topic) {
     }
 }
 
-bool sendPublicToServer(DH_KEY clientPublic, DH_KEY clientPrivate){
+bool sendPublicToServer(uint8_t clientPublic[ECC_PUB_KEY_SIZE], uint8_t clientPrivate[ECC_PRV_KEY_SIZE]){
     bool state = publishPublicKey(clientPublic, publicKeyTopic);
     if(!state){
         Serial.println("Error: Cannot publish key");
         return 0;
     }
     Serial.print("[PUBLIC KEY]: ");
-    for (int i = 0; i < DH_KEY_LENGTH; i++) {
+    for (int i = 0; i < ECC_PUB_KEY_SIZE; i++) {
         Serial.printf("%02X", clientPublic[i]);  // Print as hex
     }
     Serial.println();
@@ -185,7 +223,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     // Serial.print("Message in HEX: ");
     // Serial.println(mesHex);
     if (strcmp(topic, "encrypt/dhexchange-server") == 0) { 
-        for (int i = 0; i < DH_KEY_LENGTH; i++) {
+        for (int i = 0; i < ECC_PUB_KEY_SIZE; i++) {
             String byteString = mesHex.substring(i * 4, (i * 4) + 4);
             String firstByte = byteString.substring(0, 2);
             String secondByte = byteString.substring(2, 4);
@@ -200,7 +238,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
             serverPublicKey[i] = (firstValue << 4) | secondValue; 
         }
         Serial.print("Received Server Public Key: ");
-        for (int i = 0; i < DH_KEY_LENGTH; i++) {
+        for (int i = 0; i < ECC_PUB_KEY_SIZE; i++) {
             Serial.printf("%02X", serverPublicKey[i]);
         }
         Serial.println();
@@ -210,6 +248,20 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
         Serial.print("Topic did not match ");
         Serial.println(String(topic));
     }
+}
+
+void generatePublicAndSecret(uint8_t publicKey[ECC_PUB_KEY_SIZE], uint8_t privateKey[ECC_PRV_KEY_SIZE])
+{
+    static int initialized = 0;
+    if (!initialized)
+    {
+        prng_init((0xbad ^ 0xc0ffee ^ 42) | 0xcafebabe | 666);
+        initialized = 1;
+    }
+    for (int i = 0; i < ECC_PRV_KEY_SIZE; ++i){
+        publicKey[i] = prng_next();
+    }
+    assert(ecdh_generate_keys(publicKey, privateKey));
 }
 
 bool receivePublicFromServer(){
@@ -263,36 +315,40 @@ void generateSecretKey(DH_KEY clientPrivate, DH_KEY clientSecret){
     // Serial.println();
 }
 
-int serverPublicCheck(DH_KEY serverPublicKey){
-    int sum = 0;
-    for(int i = 0; i < DH_KEY_LENGTH; i++){
-        sum += serverPublicKey[i];
-    }
-    return sum;
-}
+// int serverPublicCheck(DH_KEY serverPublicKey){
+//     int sum = 0;
+//     for(int i = 0; i < DH_KEY_LENGTH; i++){
+//         sum += serverPublicKey[i];
+//     }
+//     return sum;
+// }
 
 bool performKeyExchange(unsigned char *key)
 {
-    DH_KEY clientPublic, clientPrivate, clientSecret;
 
-    time_t seed;
-	time(&seed);
-	srand((unsigned int)seed);
+    // DH_KEY clientPublic, clientPrivate, clientSecret;
+    uint8_t clientPublic[ECC_PUB_KEY_SIZE];
+    uint8_t clientPrivate[ECC_PRV_KEY_SIZE];
+    uint8_t clientSecret[ECC_PUB_KEY_SIZE];
 
-    DH_generate_key_pair(clientPublic, clientPrivate);
+    // DH_generate_key_pair(clientPublic, clientPrivate);
     // subscribeToKeyExchangeTopic();
+    generatePublicAndSecret(clientPublic, clientPrivate);
+
     if(!sendPublicToServer(clientPublic, clientPrivate)){
         Serial.println("Error: Cannot send public to server");
         return 0;
     }
+
     Serial.println("Sended public to server");
     if(!receivePublicFromServer()){
         Serial.println("Error: Cannot receive public to server");
         return 0;
     }
     Serial.println("Received public to server");
-    generateSecretKey(clientPrivate, clientSecret);
-    for(int i = 0; i < DH_KEY_LENGTH; i++){
+
+    ecdh_shared_secret(clientPrivate, serverPublicKey, clientSecret);
+    for(int i = 0; i < ECC_PUB_KEY_SIZE; i++){
         key[i] = clientSecret[i];
     }
     Serial.println("Key exchange completed!");
