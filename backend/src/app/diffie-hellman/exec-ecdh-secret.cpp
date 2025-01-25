@@ -4,6 +4,7 @@
 #include <cstring>
 #include <cstdio>
 #include "ecdh.h"
+#include "sha256.h"
 
 // Convert hexadecimal string to DH_KEY (unsigned char array)
 void hex_to_dh_public_key(const std::string &hex, uint8_t key[ECC_PUB_KEY_SIZE])
@@ -30,6 +31,9 @@ void hex_to_dh_private_key(const std::string &hex, uint8_t key[ECC_PRV_KEY_SIZE]
 
 int main()
 {
+    BYTE buf[SHA256_BLOCK_SIZE];
+    SHA256_CTX ctx;
+
     uint8_t secret_key[ECC_PUB_KEY_SIZE] = {0};
     uint8_t my_private[ECC_PRV_KEY_SIZE] = {0};
     uint8_t another_public[ECC_PUB_KEY_SIZE] = {0};
@@ -62,9 +66,19 @@ int main()
     // Output the secret_key in hexadecimal format
     // printf("secret_key: ");
     ecdh_shared_secret(my_private, another_public, secret_key);
-    for (int i = 0; i < ECC_PUB_KEY_SIZE; ++i)
+
+    sha256_init(&ctx);
+    sha256_update(&ctx, secret_key, sizeof(secret_key) - 1);
+    sha256_final(&ctx, buf);
+
+    // for (int i = 0; i < ECC_PUB_KEY_SIZE; ++i)
+    // {
+    //     printf("%02x", secret_key[i]);
+    // }
+
+    for (int i = 0; i < HASH_SIZE; ++i)
     {
-        printf("%02x", secret_key[i]);
+        printf("%02x", buf[i]);
     }
     printf("\n");
 

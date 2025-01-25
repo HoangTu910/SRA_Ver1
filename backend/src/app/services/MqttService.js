@@ -45,7 +45,7 @@ async function generatePublicPrivateKeys() {
                 return reject(new Error(stderr));
             }
 
-            console.log(`Output from public/private key C++ executable: \n${stdout}`);
+            // console.log(`Output from public/private key C++ executable: \n${stdout}`);
 
             const publicKeyMatch = stdout.match(/Public Key:\s([0-9a-f]+)/);
             const privateKeyMatch = stdout.match(/Private Key:\s([0-9a-f]+)/);
@@ -68,12 +68,12 @@ async function generatePublicPrivateKeys() {
 // Function to generate the secret key
 async function generateSecretKey(myPrivateHex, anotherPublicHex) {
     return new Promise((resolve, reject) => {
-        console.error(`Generating secret...`);
+        // console.error(`Generating secret...`);
 
         const secretExecutablePath = '/home/iot-bts2/HHT_AIT/backend/src/app/diffie-hellman/exec-secret';
         const process = execFile(secretExecutablePath);
-        console.log("My Private Key (Hex):", myPrivateHex);
-        console.log("Another Public Key (Hex):", anotherPublicHex);
+        // console.log("My Private Key (Hex):", myPrivateHex);
+        // console.log("Another Public Key (Hex):", anotherPublicHex);
         // Write the input to stdin in the same format as the echo command
         process.stdin.write(`${myPrivateHex} ${anotherPublicHex}\n`);
         process.stdin.end();
@@ -101,7 +101,7 @@ async function generateSecretKey(myPrivateHex, anotherPublicHex) {
             const secretKeyMatch = output.trim().match(/[0-9a-fA-F]+/);
             if (secretKeyMatch) {
                 const secretKey = secretKeyMatch[0];
-                console.log("Generated Secret Key (Hex):", secretKey);
+                console.log("[KEY HASHING FROM SHA-256]:", secretKey);
                 resolve(secretKey);
             } else {
                 reject(new Error("Could not find the secret key in the output."));
@@ -350,7 +350,7 @@ function initMQTT() {
             const messageBuffer = Buffer.from(hexData, 'hex');
             const publicKeyReceiveFromClient = messageBuffer;
             serverReceivePublic = publicKeyReceiveFromClient.toString();
-            console.log('Public key received: ', serverReceivePublic.toString());
+            console.log('[PUBLIC RECEIVED]: ', serverReceivePublic.toString());
             if (serverReceivePublic != null) {
                 client.publish(TOPIC_TO_PUBLIC_KEY_TO_CLIENT, serverPublicKey.toString('hex'), { qos: 1 }, (err) => {
                     if (err) {
