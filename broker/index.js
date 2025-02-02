@@ -26,7 +26,7 @@ const startEvents = () => {
       return callback(error, false);
     };
 
-    const topics = ['sensors/data', 'handshake/syn', 'handshake/syn-ack', 'handshake/ack', 'encrypt/dhexchange' ];
+    const topics = ['sensors/data', 'handshake/syn', 'handshake/syn-ack', 'handshake/ack', 'encrypt/dhexchange', 'handshake/ecdh' ];
     // authorizing client to publish on a message topic
     aedes.authorizePublish = (client, packet, callback) => {
       // check topics

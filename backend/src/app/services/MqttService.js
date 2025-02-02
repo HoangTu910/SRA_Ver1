@@ -12,6 +12,7 @@ const TOPIC_HANDSHAKE_ACK = 'handshake/ack';
 const DATA_TOPIC = 'sensors/data';
 const TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT = 'encrypt/dhexchange';
 const TOPIC_TO_PUBLIC_KEY_TO_CLIENT = 'encrypt/dhexchange-server';
+const TOPIC_HANDSHAKE_ECDH = 'handshake/ecdh';
 
 const SYN = Buffer.from([0xA1]);;
 const SYN_ACK = Buffer.from([0xA2]);;
@@ -275,6 +276,13 @@ function initMQTT() {
                 console.log(`Subscribed to ${TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT}`);
             }
         });
+        client.subscribe(TOPIC_HANDSHAKE_ECDH, { qos: 1 }, (err) => {
+            if (err) {
+                console.error(`Failed to subscribe to ${TOPIC_HANDSHAKE_ECDH}:`, err);
+            } else {
+                console.log(`Subscribed to ${TOPIC_HANDSHAKE_ECDH}`);
+            }
+        });
     });
 
 
@@ -361,6 +369,21 @@ function initMQTT() {
                 });
                 //Wait for client receive and send back noti that received
             }
+        } else if (topic == TOPIC_HANDSHAKE_ECDH){
+            const s_preamble = message.readUInt16LE(0);        // 2 bytes
+            const s_identifierId = message.readUInt32LE(2);    // 4 bytes
+            const s_packetType = message.readUInt8(6);         // 1 byte
+            const s_sequenceNumber = message.readUInt16LE(7);  // 2 bytes
+            const s_publicKey = message.slice(9, 9 + 32);      // 32 bytes
+            const s_authTag = message.slice(41, 41 + 16);      // 16 bytes
+            // Log the parsed values.
+            console.log("Parsed Handshake Frame:");
+            console.log("  Preamble:       0x" + s_preamble.toString(16));
+            console.log("  Identifier ID:  0x" + s_identifierId.toString(16));
+            console.log("  Packet Type:    0x" + s_packetType.toString(16));
+            console.log("  Sequence Number:", s_sequenceNumber);
+            console.log("  Public Key:", s_publicKey.toString('hex'));
+            console.log("  Auth Tag: ", s_authTag.toString('hex'));
         }
     });
 
