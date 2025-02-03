@@ -13,6 +13,7 @@ const DATA_TOPIC = 'sensors/data';
 const TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT = 'encrypt/dhexchange';
 const TOPIC_TO_PUBLIC_KEY_TO_CLIENT = 'encrypt/dhexchange-server';
 const TOPIC_HANDSHAKE_ECDH = 'handshake/ecdh';
+const TOPIC_HANDSHAKE_ECDH_SEND = 'handshake-send/ecdh';
 
 const SYN = Buffer.from([0xA1]);;
 const SYN_ACK = Buffer.from([0xA2]);;
@@ -54,9 +55,6 @@ async function generatePublicPrivateKeys() {
             if (publicKeyMatch && privateKeyMatch) {
                 const publicKey = publicKeyMatch[1];
                 const privateKey = privateKeyMatch[1];
-
-                console.log("Generated Public Key (Hex):", publicKey);
-                console.log("Generated Private Key (Hex):", privateKey);
 
                 resolve({ publicKey, privateKey });
             } else {
@@ -112,18 +110,19 @@ async function generateSecretKey(myPrivateHex, anotherPublicHex) {
 }
 
 
-(async () => {
+async function initializeKeys() {
     try {
         const { publicKey, privateKey } = await generatePublicPrivateKeys();
         serverPublicKey = publicKey;
         serverPrivateKey = privateKey;
-        console.log("Server Public Key (Hex):", serverPublicKey);
-        console.log("Server Private Key (Hex):", serverPrivateKey);
-
+        console.log("-- Generated [Public] Key:", serverPublicKey.toString('hex').slice(0, 16) + "...");
+        console.log("-- Generated [Private] Key:", privateKey.toString('hex').slice(0, 16) + "..."); // Never log full private keys
+        return true;
     } catch (error) {
-        console.error("Error during key generation:", error.message);
+        console.error('Key initialization failed:', error);
+        return false;
     }
-})();
+}
 
 
 function reconstructDecryptedData(decryptedtext) {
@@ -235,155 +234,182 @@ async function handleHandshakeResponse(message) {
     }
 }
 
+
+const TOPICS = {
+    HANDSHAKE_SYN: 'handshake/syn',
+    HANDSHAKE_SYN_ACK: 'handshake/syn-ack',
+    HANDSHAKE_ACK: 'handshake/ack',
+    SENSOR_DATA: 'sensors/data',
+    CLIENT_PUBLIC_KEY: 'topic/client-public-key', 
+    ECDH_HANDSHAKE: 'handshake/ecdh'       
+  };
+  
+const MESSAGE_HANDLERS = {
+    [TOPICS.SENSOR_DATA]: handleSensorData,
+    [TOPICS.CLIENT_PUBLIC_KEY]: handleClientPublicKey,
+    [TOPICS.ECDH_HANDSHAKE]: handleEcdhHandshake
+};
+
+async function handleSensorData(message) {
+    const data = JSON.parse(message.toString());
+    const { dataEncrypted, nonce } = data;
+
+    const serverSecret = await generateSecretKey(serverPrivateKey, serverReceivePublic);
+    console.log('Server Secret:', serverSecret);
+
+    const decryptedData = await decryptData(
+        Buffer.from(dataEncrypted),
+        Buffer.from(nonce),
+        serverSecret
+    );
+
+    console.log('Decrypted Data (Hex):', decryptedData.toString('hex'));
+    const result = reconstructDecryptedData(decryptedData);
+
+    await uploadToFirestore(result);
+}
+
+async function handleClientPublicKey(message) {
+    const messageBuffer = parseMessageToBuffer(message);
+    serverReceivePublic = messageBuffer.toString();
+    console.log('[PUBLIC RECEIVED]:', serverReceivePublic);
+
+    if (serverReceivePublic) {
+        await publishWithCallback(
+        TOPICS.SERVER_PUBLIC_KEY,
+        serverPublicKey.toString('hex'),
+        'SERVER PUBLIC'
+        );
+    }
+}
+
+async function handleEcdhHandshake(message) {
+    try {
+        // State 1: Parse and validate frame
+        const frame = parseEcdhHandshakeFrame(message);
+        if (!frame.publicKey || frame.publicKey.length !== 32) {
+            throw new Error('Invalid public key in handshake frame');
+        }
+
+        // State 2: Store client public key
+        serverReceivePublic = frame.publicKey;
+        console.log('Received client public key:', serverReceivePublic.toString('hex'));
+
+        // State 3: Generate server keys
+        const keysInitialized = await initializeKeys();
+        if (!keysInitialized) {
+            throw new Error('Failed to generate server keys');
+        }
+
+        // State 4: Publish server public key
+        const pubKeyBuffer = Buffer.isBuffer(serverPublicKey) ? serverPublicKey : Buffer.from(serverPublicKey, 'hex');
+        client.publish(TOPIC_HANDSHAKE_ECDH_SEND, pubKeyBuffer, { qos: 1 }, (err) => {
+            if (err) {
+                reject(new Error(`Publish failed: ${err.message}`));
+            } else {
+                console.log('Successfully published public key to', TOPIC_HANDSHAKE_ECDH_SEND);
+            }
+        });
+
+        //State 5: Server compute secret key
+    } catch (error) {
+        console.error('Handshake error:', error.message);
+        // Implement retry logic or error recovery here
+    }
+}
+
+// Helper functions
+function parseMessageToBuffer(message) {
+    return Buffer.from(message.toString('hex'), 'hex');
+}
+
+async function publishWithCallback(topic, message, description) {
+    return new Promise((resolve, reject) => {
+        client.publish(topic, message, { qos: 1 }, (err) => {
+        if (err) {
+            console.error(`Failed to publish ${description}:`, err);
+            reject(err);
+        } else {
+            console.log(`Published ${description}`);
+            resolve();
+        }
+        });
+    });
+}
+
+async function uploadToFirestore(data) {
+    const uploadData = {
+        heart_rate: data.heartRate,
+        temperature: data.temperature,
+        spO2: data.spO2,
+        acceleration: data.acceleration,
+        isanomaly: data.isanomaly
+    };
+    await DeviceDataService.createDeviceData(uploadData, data.deviceId);
+}
+
+function parseEcdhHandshakeFrame(message) {
+    return {
+        preamble: message.readUInt16LE(0),
+        identifierId: message.readUInt32LE(2),
+        packetType: message.readUInt8(6),
+        sequenceNumber: message.readUInt16LE(7),
+        publicKey: message.slice(9, 41),
+        authTag: message.slice(41, 57)
+    };
+}
+
+function logHandshakeFrame(frame) {
+    console.log("Parsed Handshake Frame:");
+    console.log(`  Preamble:       0x${frame.preamble.toString(16)}`);
+    console.log(`  Identifier ID:  0x${frame.identifierId.toString(16)}`);
+    console.log(`  Packet Type:    0x${frame.packetType.toString(16)}`);
+    console.log(`  Sequence Number: ${frame.sequenceNumber}`);
+    console.log(`  Public Key: ${frame.publicKey.toString('hex')}`);
+    console.log(`  Auth Tag:  ${frame.authTag.toString('hex')}`);
+}
+
 function initMQTT() {
     client = mqtt.connect(brokerUrl, options);
 
     client.on('connect', () => {
         console.log('Connected to MQTT broker');
-        // Subscribe to topics
-        client.subscribe(TOPIC_HANDSHAKE_SYN, { qos: 1 }, (err) => {
-            if (err) {
-                console.error(`Failed to subscribe to ${TOPIC_HANDSHAKE_SYN}:`, err);
-            } else {
-                console.log(`Subscribed to ${TOPIC_HANDSHAKE_SYN}`);
-            }
-        });
-        client.subscribe(TOPIC_HANDSHAKE_SYN_ACK, { qos: 1 }, (err) => {
-            if (err) {
-                console.error(`Failed to subscribe to ${TOPIC_HANDSHAKE_SYN_ACK}:`, err);
-            } else {
-                console.log(`Subscribed to ${TOPIC_HANDSHAKE_SYN_ACK}`);
-            }
-        });
-        client.subscribe(TOPIC_HANDSHAKE_ACK, { qos: 1 }, (err) => {
-            if (err) {
-                console.error(`Failed to subscribe to ${TOPIC_HANDSHAKE_ACK}:`, err);
-            } else {
-                console.log(`Subscribed to ${TOPIC_HANDSHAKE_ACK}`);
-            }
-        });
         client.subscribe(DATA_TOPIC, { qos: 1 }, (err) => {
             if (err) {
                 console.error(`Failed to subscribe to ${DATA_TOPIC}:`, err);
             } else {
-                console.log(`Subscribed to ${DATA_TOPIC}`);
+                console.log(`-- Subscribed to [${DATA_TOPIC}]`);
             }
         });
         client.subscribe(TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT, { qos: 1 }, (err) => {
             if (err) {
                 console.error(`Failed to subscribe to ${TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT}:`, err);
             } else {
-                console.log(`Subscribed to ${TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT}`);
+                console.log(`-- Subscribed to [${TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT}]`);
             }
         });
         client.subscribe(TOPIC_HANDSHAKE_ECDH, { qos: 1 }, (err) => {
             if (err) {
                 console.error(`Failed to subscribe to ${TOPIC_HANDSHAKE_ECDH}:`, err);
             } else {
-                console.log(`Subscribed to ${TOPIC_HANDSHAKE_ECDH}`);
+                console.log(`-- Subscribed to [${TOPIC_HANDSHAKE_ECDH}]`);
             }
         });
     });
 
-
     client.on('message', async (topic, message) => {
-        const startTime = Date.now();
-        const hexData = message.toString('hex'); // Convert message to HEX string
-        const messageBuffer = Buffer.from(hexData, 'hex');
-        //console.log(`Raw ${topic}:`, messageBuffer);
-
-        if (topic === 'handshake/syn') {
-            // Handle SYN from ESP32
-            console.log('Handshake SYN received.');
-            const commandSyn = messageBuffer[0];
-            console.log(`Command SYN value: ${commandSyn.toString(16).toUpperCase()}`);
-            client.publish('handshake/syn-ack', SYN_ACK, { qos: 1 }, (err) => {
-                if (err) {
-                    console.error('Failed to publish SYN-ACK:', err);
-                } else {
-                    console.log('Published SYN-ACK');
-                }
-            });
-        } else if (topic === 'handshake/syn-ack') {
-            // Handle SYN-ACK response
-            console.log('Handshake SYN-ACK received.');
-            // Wait for ACK from the ESP32
-        } else if (topic === 'handshake/ack') {
-            if (message.toString() === ACK.toString()) {
-                console.log('Handshake ACK received.');
-                // client.subscribe('sensors/data', { qos: 1 }, (err) => {
-                //     if (err) {
-                //         console.error(`Failed to subscribe to sensors/data:`, err);
-                //     } else {
-                //         console.log('Subscribed to sensors/data');
-                //     }
-                // });
-            }
-        } else if (topic === 'sensors/data') {
-            try {
-                const data = JSON.parse(message.toString());
-                //console.log('Data: ', data);
-                const encryptDataBuffer = Buffer.from(data.dataEncrypted);
-                const nonce = Buffer.from(data.nonce);
-                // const key = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]);
-                serverSecret = await generateSecretKey(serverPrivateKey, serverReceivePublic);
-                console.log('Server Secret: ', serverSecret);
-                const decryptedData = await decryptData(encryptDataBuffer, nonce, serverSecret);
-                // console.log('Decrypted Data Length: ', decryptedData.length);
-                // console.log('Decrypted Data Buffer: ', decryptedData);
-                console.log('Decrypted Data (Hex): ', decryptedData.toString('hex'));
-                const result = reconstructDecryptedData(decryptedData);
-                // console.log('Device ID: ', result.deviceId);
-                // console.log('Heart Rate: ', result.heartRate);
-                // console.log('Temperature: ', result.temperature);
-                // console.log('SPO2: ', result.spO2);
-                // console.log('Anomaly: ', result.isanomaly);
-                // Write data to Firestore
-                const uploadData = {
-                    heart_rate: result.heartRate,
-                    temperature: result.temperature,
-                    spO2: result.spO2,
-                    acceleration: result.acceleration,
-                    isanomaly: result.isanomaly
-                };
-
-                await DeviceDataService.createDeviceData(uploadData, result.deviceId);
-                const endTime = Date.now();
-                console.log(`Processed message in ${endTime - startTime}ms`);
-            } catch (e) {
-                console.error('Failed to parse message or write to Firestore:', e);
-            }
-        } else if (topic === TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT) {
-            const hexData = message.toString('hex');
-            const messageBuffer = Buffer.from(hexData, 'hex');
-            const publicKeyReceiveFromClient = messageBuffer;
-            serverReceivePublic = publicKeyReceiveFromClient.toString();
-            console.log('[PUBLIC RECEIVED]: ', serverReceivePublic.toString());
-            if (serverReceivePublic != null) {
-                client.publish(TOPIC_TO_PUBLIC_KEY_TO_CLIENT, serverPublicKey.toString('hex'), { qos: 1 }, (err) => {
-                    if (err) {
-                        console.error('Failed to publish SERVER PUBLIC:', err);
-                    } else {
-                        console.log('Published SERVER PUBLIC');
-                    }
-                });
-                //Wait for client receive and send back noti that received
-            }
-        } else if (topic == TOPIC_HANDSHAKE_ECDH){
-            const s_preamble = message.readUInt16LE(0);        // 2 bytes
-            const s_identifierId = message.readUInt32LE(2);    // 4 bytes
-            const s_packetType = message.readUInt8(6);         // 1 byte
-            const s_sequenceNumber = message.readUInt16LE(7);  // 2 bytes
-            const s_publicKey = message.slice(9, 9 + 32);      // 32 bytes
-            const s_authTag = message.slice(41, 41 + 16);      // 16 bytes
-            // Log the parsed values.
-            console.log("Parsed Handshake Frame:");
-            console.log("  Preamble:       0x" + s_preamble.toString(16));
-            console.log("  Identifier ID:  0x" + s_identifierId.toString(16));
-            console.log("  Packet Type:    0x" + s_packetType.toString(16));
-            console.log("  Sequence Number:", s_sequenceNumber);
-            console.log("  Public Key:", s_publicKey.toString('hex'));
-            console.log("  Auth Tag: ", s_authTag.toString('hex'));
+        const handler = MESSAGE_HANDLERS[topic];
+        if (handler) {
+          try {
+            const startTime = Date.now();
+            await handler(message);
+            const endTime = Date.now();
+            console.log(`Processed ${topic} in ${endTime - startTime}ms`);
+          } catch (error) {
+            console.error(`Error handling ${topic}:`, error);
+          }
+        } else {
+          console.warn(`No handler for topic: ${topic}`);
         }
     });
 
@@ -407,3 +433,106 @@ function initMQTT() {
 module.exports = {
     initMQTT
 };
+
+
+
+// client.on('message', async (topic, message) => {
+//     const startTime = Date.now();
+//     const hexData = message.toString('hex'); // Convert message to HEX string
+//     const messageBuffer = Buffer.from(hexData, 'hex');
+//     //console.log(`Raw ${topic}:`, messageBuffer);
+
+//     if (topic === 'handshake/syn') {
+//         // Handle SYN from ESP32
+//         console.log('Handshake SYN received.');
+//         const commandSyn = messageBuffer[0];
+//         console.log(`Command SYN value: ${commandSyn.toString(16).toUpperCase()}`);
+//         client.publish('handshake/syn-ack', SYN_ACK, { qos: 1 }, (err) => {
+//             if (err) {
+//                 console.error('Failed to publish SYN-ACK:', err);
+//             } else {
+//                 console.log('Published SYN-ACK');
+//             }
+//         });
+//     } else if (topic === 'handshake/syn-ack') {
+//         // Handle SYN-ACK response
+//         console.log('Handshake SYN-ACK received.');
+//         // Wait for ACK from the ESP32
+//     } else if (topic === 'handshake/ack') {
+//         if (message.toString() === ACK.toString()) {
+//             console.log('Handshake ACK received.');
+//             // client.subscribe('sensors/data', { qos: 1 }, (err) => {
+//             //     if (err) {
+//             //         console.error(`Failed to subscribe to sensors/data:`, err);
+//             //     } else {
+//             //         console.log('Subscribed to sensors/data');
+//             //     }
+//             // });
+//         }
+//     } else if (topic === 'sensors/data') {
+//         try {
+//             const data = JSON.parse(message.toString());
+//             //console.log('Data: ', data);
+//             const encryptDataBuffer = Buffer.from(data.dataEncrypted);
+//             const nonce = Buffer.from(data.nonce);
+//             // const key = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]);
+//             serverSecret = await generateSecretKey(serverPrivateKey, serverReceivePublic);
+//             console.log('Server Secret: ', serverSecret);
+//             const decryptedData = await decryptData(encryptDataBuffer, nonce, serverSecret);
+//             // console.log('Decrypted Data Length: ', decryptedData.length);
+//             // console.log('Decrypted Data Buffer: ', decryptedData);
+//             console.log('Decrypted Data (Hex): ', decryptedData.toString('hex'));
+//             const result = reconstructDecryptedData(decryptedData);
+//             // console.log('Device ID: ', result.deviceId);
+//             // console.log('Heart Rate: ', result.heartRate);
+//             // console.log('Temperature: ', result.temperature);
+//             // console.log('SPO2: ', result.spO2);
+//             // console.log('Anomaly: ', result.isanomaly);
+//             // Write data to Firestore
+//             const uploadData = {
+//                 heart_rate: result.heartRate,
+//                 temperature: result.temperature,
+//                 spO2: result.spO2,
+//                 acceleration: result.acceleration,
+//                 isanomaly: result.isanomaly
+//             };
+
+//             await DeviceDataService.createDeviceData(uploadData, result.deviceId);
+//             const endTime = Date.now();
+//             console.log(`Processed message in ${endTime - startTime}ms`);
+//         } catch (e) {
+//             console.error('Failed to parse message or write to Firestore:', e);
+//         }
+//     } else if (topic === TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT) {
+//         const hexData = message.toString('hex');
+//         const messageBuffer = Buffer.from(hexData, 'hex');
+//         const publicKeyReceiveFromClient = messageBuffer;
+//         serverReceivePublic = publicKeyReceiveFromClient.toString();
+//         console.log('[PUBLIC RECEIVED]: ', serverReceivePublic.toString());
+//         if (serverReceivePublic != null) {
+//             client.publish(TOPIC_TO_PUBLIC_KEY_TO_CLIENT, serverPublicKey.toString('hex'), { qos: 1 }, (err) => {
+//                 if (err) {
+//                     console.error('Failed to publish SERVER PUBLIC:', err);
+//                 } else {
+//                     console.log('Published SERVER PUBLIC');
+//                 }
+//             });
+//             //Wait for client receive and send back noti that received
+//         }
+//     } else if (topic == TOPIC_HANDSHAKE_ECDH){
+//         const s_preamble = message.readUInt16LE(0);        // 2 bytes
+//         const s_identifierId = message.readUInt32LE(2);    // 4 bytes
+//         const s_packetType = message.readUInt8(6);         // 1 byte
+//         const s_sequenceNumber = message.readUInt16LE(7);  // 2 bytes
+//         const s_publicKey = message.slice(9, 9 + 32);      // 32 bytes
+//         const s_authTag = message.slice(41, 41 + 16);      // 16 bytes
+//         // Log the parsed values.
+//         console.log("Parsed Handshake Frame:");
+//         console.log("  Preamble:       0x" + s_preamble.toString(16));
+//         console.log("  Identifier ID:  0x" + s_identifierId.toString(16));
+//         console.log("  Packet Type:    0x" + s_packetType.toString(16));
+//         console.log("  Sequence Number:", s_sequenceNumber);
+//         console.log("  Public Key:", s_publicKey.toString('hex'));
+//         console.log("  Auth Tag: ", s_authTag.toString('hex'));
+//     }
+// });

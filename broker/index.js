@@ -15,7 +15,7 @@ const startEvents = () => {
         return callback(null, false);
       }
       const decodedPassword = Buffer.from(password, 'base64').toString('utf8');
-      console.log(`Decoded Password: ${decodedPassword}`);
+      // console.log(`Decoded Password: ${decodedPassword}`);
       if (username === 'admin' && decodedPassword === '123') {
         return callback(null, true);
       }
@@ -26,7 +26,7 @@ const startEvents = () => {
       return callback(error, false);
     };
 
-    const topics = ['sensors/data', 'handshake/syn', 'handshake/syn-ack', 'handshake/ack', 'encrypt/dhexchange', 'handshake/ecdh' ];
+    const topics = ['sensors/data', 'handshake/syn', 'handshake/syn-ack', 'handshake/ack', 'encrypt/dhexchange', 'handshake/ecdh', 'handshake-send/ecdh'];
     // authorizing client to publish on a message topic
     aedes.authorizePublish = (client, packet, callback) => {
       // check topics
