@@ -247,7 +247,7 @@ const TOPICS = {
 const MESSAGE_HANDLERS = {
     [TOPICS.SENSOR_DATA]: handleSensorData,
     [TOPICS.CLIENT_PUBLIC_KEY]: handleClientPublicKey,
-    [TOPICS.ECDH_HANDSHAKE]: handleEcdhHandshake
+    [TOPICS.ECDH_HANDSHAKE]: parseFrame
 };
 
 async function handleSensorData(message) {
@@ -283,17 +283,18 @@ async function handleClientPublicKey(message) {
     }
 }
 
-async function handleEcdhHandshake(message) {
+async function handleEcdhHandshake(message, identifierId, packetType) {
     try {
         // State 1: Parse and validate frame
-        const frame = parseEcdhHandshakeFrame(message);
+        const frame = parseHandshakeFrame(message, identifierId, packetType);
+        logHandshakeFrame(frame);
         if (!frame.publicKey || frame.publicKey.length !== 32) {
             throw new Error('Invalid public key in handshake frame');
         }
 
         // State 2: Store client public key
         serverReceivePublic = frame.publicKey;
-        console.log('Received client public key:', serverReceivePublic.toString('hex'));
+        // console.log('Received client public key:', serverReceivePublic.toString('hex'));
 
         // State 3: Generate server keys
         const keysInitialized = await initializeKeys();
@@ -314,6 +315,25 @@ async function handleEcdhHandshake(message) {
         //State 5: Server compute secret key
     } catch (error) {
         console.error('Handshake error:', error.message);
+        // Implement retry logic or error recovery here
+    }
+}
+
+async function handleDataFrame(message, identifierId, packetType){
+    try {
+        // State 1: Parse and validate frame
+        const frame = parseDataFrame(message, identifierId, packetType);
+        logServerDataFrame(frame);
+
+        // State 2: Store client public key
+
+        // State 3: Generate server keys
+
+        // State 4: Publish server public key
+
+        //State 5: Server compute secret key
+    } catch (error) {
+        console.error('Data frame error:', error.message);
         // Implement retry logic or error recovery here
     }
 }
@@ -348,26 +368,111 @@ async function uploadToFirestore(data) {
     await DeviceDataService.createDeviceData(uploadData, data.deviceId);
 }
 
-function parseEcdhHandshakeFrame(message) {
+function parseFrame(message) {
+    if (message.length < 7) {
+        throw new Error("Message too short to parse header");
+    }
+
+    const preamble = message.readUInt16LE(0);
+    const identifierId = message.readUInt32LE(2);
+    const packetType = message.readUInt8(6);
+
+    // Validate preamble 
+    if (preamble !== 0xAA55) {
+        throw new Error("Invalid preamble");
+    }
+
+    // Dispatch based on packet type
+    switch (packetType) {
+        case 0x03: // Handshake Frame
+            return handleEcdhHandshake(message, identifierId, packetType);
+        case 0x01: // Data Frame
+            return handleDataFrame(message, identifierId, packetType);
+        default:
+            throw new Error(`Unknown packet type: 0x${packetType.toString(16).padStart(2, '0')}`);
+    }
+}
+
+function parseHandshakeFrame(message, identifierId, packetType) {
     return {
         preamble: message.readUInt16LE(0),
-        identifierId: message.readUInt32LE(2),
-        packetType: message.readUInt8(6),
+        identifierId: identifierId,
+        packetType: packetType,
         sequenceNumber: message.readUInt16LE(7),
-        publicKey: message.slice(9, 41),
-        authTag: message.slice(41, 57)
+        publicKey: message.subarray(9, 41), // 32 bytes
+        authTag: message.subarray(41, 57)   // 16 bytes
+    };
+}
+
+function parseDataFrame(message, expectedIdentifierId, expectedPacketType) {
+    const NONCE_SIZE = 16;          
+    const AUTH_TAG_SIZE = 16;
+
+    // Parse fixed header fields
+    const s_preamble = message.readUInt16LE(0);           // offset 0, 2 bytes
+    const s_identifierId = message.readUInt32LE(2);         // offset 2, 4 bytes
+    const s_packetType = message.readUInt8(6);              // offset 6, 1 byte
+    const s_sequenceNumber = message.readUInt16LE(7);       // offset 7, 2 bytes
+    const s_timestamp = message.readBigUInt64LE(9);         // offset 9, 8 bytes
+    const s_nonce = message.subarray(17, 17 + NONCE_SIZE);   // offset 17, 16 bytes
+
+    const s_payloadLength = message.readUInt16LE(33);       // offset 33, 2 bytes
+
+    const encryptedPayloadStart = 35;                       // immediately after header
+    const encryptedPayloadEnd = encryptedPayloadStart + s_payloadLength;
+    const authTagStart = encryptedPayloadEnd;
+    const authTagEnd = authTagStart + AUTH_TAG_SIZE;
+
+    const s_encryptedPayload = message.subarray(encryptedPayloadStart, encryptedPayloadEnd);
+    const s_authTag = message.subarray(authTagStart, authTagEnd);
+
+    if (s_identifierId !== expectedIdentifierId) {
+        throw new Error(`Identifier ID mismatch: expected ${expectedIdentifierId}, got ${s_identifierId}`);
+    }
+    if (s_packetType !== expectedPacketType) {
+        throw new Error(`Packet type mismatch: expected ${expectedPacketType}, got ${s_packetType}`);
+    }
+
+    return {
+        preamble: s_preamble,
+        identifierId: s_identifierId,
+        packetType: s_packetType,
+        sequenceNumber: s_sequenceNumber,
+        timestamp: s_timestamp,
+        nonce: s_nonce,
+        payloadLength: s_payloadLength,
+        encryptedPayload: s_encryptedPayload,
+        authTag: s_authTag
     };
 }
 
 function logHandshakeFrame(frame) {
     console.log("Parsed Handshake Frame:");
-    console.log(`  Preamble:       0x${frame.preamble.toString(16)}`);
-    console.log(`  Identifier ID:  0x${frame.identifierId.toString(16)}`);
-    console.log(`  Packet Type:    0x${frame.packetType.toString(16)}`);
-    console.log(`  Sequence Number: ${frame.sequenceNumber}`);
-    console.log(`  Public Key: ${frame.publicKey.toString('hex')}`);
-    console.log(`  Auth Tag:  ${frame.authTag.toString('hex')}`);
+    console.table([
+        { "Field": "Preamble", "Value": `0x${frame.preamble.toString(16)}` },
+        { "Field": "Identifier ID", "Value": `0x${frame.identifierId.toString(16)}` },
+        { "Field": "Packet Type", "Value": `0x${frame.packetType.toString(16)}` },
+        { "Field": "Sequence Number", "Value": frame.sequenceNumber },
+        { "Field": "Public Key", "Value": frame.publicKey.toString('hex') },
+        { "Field": "Auth Tag", "Value": frame.authTag.toString('hex') }
+    ]);
 }
+
+function logServerDataFrame(frame) {
+    console.log("Parsed Server Data Frame:");
+    console.table([
+        { "Field": "Preamble", "Value": `0x${frame.preamble.toString(16)}` },
+        { "Field": "Identifier ID", "Value": `0x${frame.identifierId.toString(16)}` },
+        { "Field": "Packet Type", "Value": `0x${frame.packetType.toString(16)}` },
+        { "Field": "Sequence Number", "Value": frame.sequenceNumber },
+        { "Field": "Timestamp", "Value": frame.timestamp.toString() },
+        { "Field": "Nonce", "Value": frame.nonce.toString('hex') },
+        { "Field": "Payload Length", "Value": frame.payloadLength },
+        { "Field": "Encrypted Payload", "Value": frame.encryptedPayload.toString('hex') },
+        { "Field": "Auth Tag", "Value": frame.authTag.toString('hex') }
+    ]);
+}
+
 
 function initMQTT() {
     client = mqtt.connect(brokerUrl, options);
