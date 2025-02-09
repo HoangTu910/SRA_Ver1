@@ -1,86 +1,67 @@
 #include <iostream>
 #include <sstream>
+#include <iomanip>
+#include <string>
 #include <cstdint>
-#include <cstring>
-#include <cstdio>
+#include <cstdlib>
 #include "ecdh.h"
-#include "sha256.h"
 
-// Convert hexadecimal string to DH_KEY (unsigned char array)
-void hex_to_dh_public_key(const std::string &hex, uint8_t key[ECC_PUB_KEY_SIZE])
+// --- Utility: Convert hex string to byte array ---
+// The hex string must be exactly (expectedLen*2) characters long.
+bool hexStringToBytes(const std::string &hex, uint8_t *bytes, size_t expectedLen)
 {
-    for (size_t i = 0; i < ECC_PUB_KEY_SIZE; ++i)
+    for (size_t i = 0; i < expectedLen; i++)
     {
-        // Extract two characters at a time
         std::string byteString = hex.substr(i * 2, 2);
-        // Convert the hex string to an integer
-        key[i] = static_cast<unsigned char>(strtol(byteString.c_str(), nullptr, 16));
+        bytes[i] = static_cast<uint8_t>(std::strtoul(byteString.c_str(), nullptr, 16));
     }
+    return true;
 }
 
-void hex_to_dh_private_key(const std::string &hex, uint8_t key[ECC_PRV_KEY_SIZE])
+// --- Utility: Convert byte array to hex string ---
+std::string bytesToHexString(const uint8_t *bytes, size_t length)
 {
-    for (size_t i = 0; i < ECC_PRV_KEY_SIZE; ++i)
+    std::ostringstream oss;
+    for (size_t i = 0; i < length; i++)
     {
-        // Extract two characters at a time
-        std::string byteString = hex.substr(i * 2, 2);
-        // Convert the hex string to an integer
-        key[i] = static_cast<unsigned char>(strtol(byteString.c_str(), nullptr, 16));
+        // Set width=2 and fill with '0' for proper formatting.
+        oss << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(bytes[i]);
     }
+    return oss.str();
 }
 
 int main()
 {
-    BYTE buf[SHA256_BLOCK_SIZE];
-    SHA256_CTX ctx;
+    // Read two hex strings from stdin:
+    // First is the private key (your key) and second is the public key from the other party.
+    std::string myPrivateHex, anotherPublicHex;
+    if (!(std::cin >> myPrivateHex >> anotherPublicHex))
+    {
+        std::cerr << "Error: Failed to read keys from input." << std::endl;
+        return 1;
+    }
 
     uint8_t secret_key[ECC_PUB_KEY_SIZE] = {0};
     uint8_t my_private[ECC_PRV_KEY_SIZE] = {0};
     uint8_t another_public[ECC_PUB_KEY_SIZE] = {0};
 
-    // Read hexadecimal strings for my_private and another_public from stdin
-    std::string my_private_hex, another_public_hex;
-    std::cin >> my_private_hex >> another_public_hex;
+    // Convert the hex strings into byte arrays.
+    if (!hexStringToBytes(myPrivateHex, my_private, ECC_PRV_KEY_SIZE))
+    {
+        std::cerr << "Error: Invalid private key hex string." << std::endl;
+        return 1;
+    }
+    if (!hexStringToBytes(anotherPublicHex, another_public, ECC_PUB_KEY_SIZE))
+    {
+        std::cerr << "Error: Invalid public key hex string." << std::endl;
+        return 1;
+    }
 
-    // Convert hexadecimal strings to DH_KEY arrays
-    hex_to_dh_private_key(my_private_hex, my_private);
-    hex_to_dh_public_key(another_public_hex, another_public);
-
-    // // Print my_private in hexadecimal format
-    // printf("my_private: ");
-    // for (int i = 0; i < DH_KEY_LENGTH; ++i) {
-    //     printf("%02x", my_private[i]);
-    // }
-    // printf("\n");
-
-    // // Print another_public in hexadecimal format
-    // printf("another_public: ");
-    // for (int i = 0; i < DH_KEY_LENGTH; ++i) {
-    //     printf("%02x", another_public[i]);
-    // }
-    // printf("\n");
-
-    // Generate the shared secret key
-    // DH_generate_key_secret(secret_key, my_private, another_public);
-
-    // Output the secret_key in hexadecimal format
-    // printf("secret_key: ");
     ecdh_shared_secret(my_private, another_public, secret_key);
 
-    sha256_init(&ctx);
-    sha256_update(&ctx, secret_key, sizeof(secret_key) - 1);
-    sha256_final(&ctx, buf);
-
-    // for (int i = 0; i < ECC_PUB_KEY_SIZE; ++i)
-    // {
-    //     printf("%02x", secret_key[i]);
-    // }
-
-    for (int i = 0; i < HASH_SIZE; ++i)
-    {
-        printf("%02x", buf[i]);
-    }
-    printf("\n");
+    // Convert the secret key to a hex string and print it.
+    std::string secretHex = bytesToHexString(secret_key, ECC_PUB_KEY_SIZE);
+    std::cout << secretHex << std::endl;
 
     return 0;
 }

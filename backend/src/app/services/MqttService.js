@@ -6,23 +6,20 @@ const DeviceDataService = require('./DeviceDataService');
 const brokerUrl = 'mqtt://localhost:1885';
 const topic = 'sensors/data';
 
-const TOPIC_HANDSHAKE_SYN = 'handshake/syn';
-const TOPIC_HANDSHAKE_SYN_ACK = 'handshake/syn-ack';
-const TOPIC_HANDSHAKE_ACK = 'handshake/ack';
 const DATA_TOPIC = 'sensors/data';
 const TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT = 'encrypt/dhexchange';
-const TOPIC_TO_PUBLIC_KEY_TO_CLIENT = 'encrypt/dhexchange-server';
 const TOPIC_HANDSHAKE_ECDH = 'handshake/ecdh';
 const TOPIC_HANDSHAKE_ECDH_SEND = 'handshake-send/ecdh';
 
-const SYN = Buffer.from([0xA1]);;
-const SYN_ACK = Buffer.from([0xA2]);;
-const ACK = Buffer.from([0xA3]);
-
 let serverPublicKey = null;
 let serverPrivateKey = null;
-let serverSecret = null;
+let serverSecretKey = null;
 let serverReceivePublic = null;
+
+let ciphertextHex = null;
+let keyHex = null;
+let nonceHex = null;
+
 
 const publicExecutablePath = path.resolve(__dirname, '../diffie-hellman/exec-public');
 const secretExecutablePath = path.resolve(__dirname, '../diffie-hellman/exec-secret');
@@ -67,47 +64,46 @@ async function generatePublicPrivateKeys() {
 // Function to generate the secret key
 async function generateSecretKey(myPrivateHex, anotherPublicHex) {
     return new Promise((resolve, reject) => {
-        // console.error(`Generating secret...`);
-
-        const secretExecutablePath = '/home/iot-bts2/HHT_AIT/backend/src/app/diffie-hellman/exec-secret';
-        const process = execFile(secretExecutablePath);
-        // console.log("My Private Key (Hex):", myPrivateHex);
-        // console.log("Another Public Key (Hex):", anotherPublicHex);
-        // Write the input to stdin in the same format as the echo command
-        process.stdin.write(`${myPrivateHex} ${anotherPublicHex}\n`);
-        process.stdin.end();
-
-        const timeout = setTimeout(() => {
-            process.kill();
-            reject(new Error("Process timed out"));
-        }, 10000); 
-
-        let output = '';
-        process.stdout.on('data', (data) => {
-            output += data.toString();
-        });
-
-        process.stderr.on('data', (data) => {
-            console.error(`stderr: ${data}`);
-        });
-
-        process.on('close', (code) => {
-            clearTimeout(timeout);
-            if (code !== 0) {
-                return reject(new Error(`Process exited with code ${code}`));
-            }
-
-            const secretKeyMatch = output.trim().match(/[0-9a-fA-F]+/);
-            if (secretKeyMatch) {
-                const secretKey = secretKeyMatch[0];
-                console.log("[KEY HASHING FROM SHA-256]:", secretKey);
-                resolve(secretKey);
-            } else {
-                reject(new Error("Could not find the secret key in the output."));
-            }
-        });
+      // Path to your compiled C++ executable.
+      const secretExecutablePath = '/home/iot-bts2/HHT_AIT/backend/src/app/diffie-hellman/exec-ecdh-secret';
+  
+      // Spawn the executable.
+      const child = execFile(secretExecutablePath, (error, stdout, stderr) => {
+        if (error) {
+          return reject(new Error(`Process error: ${error.message}`));
+        }
+        if (stderr) {
+          console.error(`stderr: ${stderr}`);
+        }
+        
+        // The C++ executable should print the secret key as a hex string.
+        const output = stdout.trim();
+        const secretKeyMatch = output.match(/[0-9a-fA-F]+/);
+        if (secretKeyMatch) {
+          const secretKey = secretKeyMatch[0];
+        //   console.log("-- Generated secret key:", secretKey.toString('hex').slice(0, 16) + "...");
+          resolve(secretKey);
+        } else {
+          reject(new Error("Could not find the secret key in the output."));
+        }
+      });
+  
+      // Write the keys to the process's stdin (format: "<myPrivateHex> <anotherPublicHex>\n")
+      child.stdin.write(`${myPrivateHex} ${anotherPublicHex}\n`);
+      child.stdin.end();
+  
+      // Set a timeout (10 seconds in this case) to prevent hanging indefinitely.
+      const timeout = setTimeout(() => {
+        child.kill();
+        reject(new Error("Process timed out"));
+      }, 10000);
+  
+      // When the process closes, clear the timeout.
+      child.on('close', () => {
+        clearTimeout(timeout);
+      });
     });
-}
+  }
 
 
 async function initializeKeys() {
@@ -175,39 +171,26 @@ function reconstructDecryptedData(decryptedtext) {
     return result;
 }
 
-
-const decryptData = (encryptedData, nonce, key) => {
+function decryptData(ciphertextHex, nonceHex, keyHex) {
     return new Promise((resolve, reject) => {
-        const binaryPath = path.join(__dirname, '../cryptography/src/decrypt_binary');
-
-        // Convert inputs to hex strings
-        const encryptedHex = Buffer.from(encryptedData).toString('hex');
-        const nonceHex = Buffer.from(nonce).toString('hex');
-        const keyHex = key;
-
-        const args = [encryptedHex, nonceHex, keyHex];
-
-        execFile(binaryPath, args, { env: { LD_LIBRARY_PATH: path.join(__dirname, '../cryptography/src') } }, (error, stdout, stderr) => {
-            if (error) {
-                console.error('Error executing binary:', error);
-                console.error('Standard Error Output:', stderr);
-                return reject(error);
-            }
-            console.log('Standard Output:', stdout);
-            const lines = stdout.trim().split('\n');
-            const decryptionCompletedCheckLine = lines[0];
-            const decryptedDataLine = lines[1];
-
-            if (decryptionCompletedCheckLine.includes("Decryption completed check:")) {
-                const decryptedHex = decryptedDataLine.trim().split(' ').map(h => parseInt(h, 16));
-                const decryptedBuffer = Buffer.from(decryptedHex);
-                resolve(decryptedBuffer);
-            } else {
-                reject(new Error('Decryption failed'));
-            }
-        });
+      // Build the path to your executable.
+      // Adjust the executable name if necessary.
+      const executablePath = '/home/iot-bts2/HHT_AIT/backend/src/app/cryptography/exec-decrypt';
+      
+      // Pass the three hex string arguments: ciphertext, nonce, and key.
+      execFile(executablePath, [ciphertextHex, nonceHex, keyHex], (error, stdout, stderr) => {
+        if (error) {
+          return reject(new Error(`Execution error: ${error.message}`));
+        }
+        if (stderr) {
+          // Optionally log stderr for debugging.
+          console.error('stderr:', stderr);
+        }
+        // The executable prints the decrypted plaintext as a hex string.
+        resolve(stdout.trim());
+      });
     });
-};
+  }
 
 
 const encodedPassword = Buffer.from('123').toString('base64');
@@ -217,23 +200,6 @@ const options = {
     username: 'admin', // Correct username
     password: '123', // Correct password, base64 encoded
 };
-
-function initiateHandshake() {
-    // Publish SYN message to start the handshake
-    client.publish('handshake/initiate', SYN);
-    handshakeState.initiated = true;
-    console.log('Handshake initiated.');
-}
-
-async function handleHandshakeResponse(message) {
-    if (message.toString() === 'SYN-ACK') {
-        // Publish ACK message to complete the handshake
-        client.publish('handshake/acknowledge', ACK);
-        handshakeState.completed = true;
-        console.log('Handshake completed.');
-    }
-}
-
 
 const TOPICS = {
     HANDSHAKE_SYN: 'handshake/syn',
@@ -251,22 +217,22 @@ const MESSAGE_HANDLERS = {
 };
 
 async function handleSensorData(message) {
-    const data = JSON.parse(message.toString());
-    const { dataEncrypted, nonce } = data;
+    // const data = JSON.parse(message.toString());
+    // const { dataEncrypted, nonce } = data;
 
-    const serverSecret = await generateSecretKey(serverPrivateKey, serverReceivePublic);
-    console.log('Server Secret:', serverSecret);
+    // const serverSecret = await generateSecretKey(serverPrivateKey, serverReceivePublic);
+    // console.log('Server Secret:', serverSecret);
 
-    const decryptedData = await decryptData(
-        Buffer.from(dataEncrypted),
-        Buffer.from(nonce),
-        serverSecret
-    );
+    // const decryptedData = await decryptData(
+    //     Buffer.from(dataEncrypted),
+    //     Buffer.from(nonce),
+    //     serverSecret
+    // );
 
-    console.log('Decrypted Data (Hex):', decryptedData.toString('hex'));
-    const result = reconstructDecryptedData(decryptedData);
+    // console.log('Decrypted Data (Hex):', decryptedData.toString('hex'));
+    // const result = reconstructDecryptedData(decryptedData);
 
-    await uploadToFirestore(result);
+    // await uploadToFirestore(result);
 }
 
 async function handleClientPublicKey(message) {
@@ -288,7 +254,7 @@ async function handleEcdhHandshake(message, identifierId, packetType) {
         // State 1: Parse and validate frame
         const frame = parseHandshakeFrame(message, identifierId, packetType);
         logHandshakeFrame(frame);
-        if (!frame.publicKey || frame.publicKey.length !== 32) {
+        if (!frame.publicKey || frame.publicKey.length !== 72) {
             throw new Error('Invalid public key in handshake frame');
         }
 
@@ -301,18 +267,22 @@ async function handleEcdhHandshake(message, identifierId, packetType) {
         if (!keysInitialized) {
             throw new Error('Failed to generate server keys');
         }
-
+        
         // State 4: Publish server public key
         const pubKeyBuffer = Buffer.isBuffer(serverPublicKey) ? serverPublicKey : Buffer.from(serverPublicKey, 'hex');
         client.publish(TOPIC_HANDSHAKE_ECDH_SEND, pubKeyBuffer, { qos: 1 }, (err) => {
             if (err) {
                 reject(new Error(`Publish failed: ${err.message}`));
             } else {
-                console.log('Successfully published public key to', TOPIC_HANDSHAKE_ECDH_SEND);
+                console.log('-- Successfully published public key to', TOPIC_HANDSHAKE_ECDH_SEND);
             }
         });
 
         //State 5: Server compute secret key
+        serverReceivePublic = serverReceivePublic.toString('hex');
+        serverSecretKey = await generateSecretKey(serverPrivateKey, serverReceivePublic);
+        console.log("-- Generated secret key:", serverSecretKey.toString('hex').slice(0, 16) + "...");
+
     } catch (error) {
         console.error('Handshake error:', error.message);
         // Implement retry logic or error recovery here
@@ -322,16 +292,26 @@ async function handleEcdhHandshake(message, identifierId, packetType) {
 async function handleDataFrame(message, identifierId, packetType){
     try {
         // State 1: Parse and validate frame
+        const ackPackage = 0x02;
+        const ackPackageBuffer = Buffer.isBuffer(ackPackage)
+            ? ackPackage
+            : Buffer.from([ackPackage]);
         const frame = parseDataFrame(message, identifierId, packetType);
         logServerDataFrame(frame);
-
-        // State 2: Store client public key
-
-        // State 3: Generate server keys
-
-        // State 4: Publish server public key
-
-        //State 5: Server compute secret key
+        // console.log("encrypted payload: ", frame.encryptedPayload.toString('hex'));
+        // console.log("server secret key: ", serverSecretKey);
+        // console.log("frame nonce: ", frame.nonce.toString('hex'));
+        // State 2: Decrypt data
+        const decrypt = await decryptData(frame.encryptedPayload.toString('hex'), frame.nonce.toString('hex'), serverSecretKey);
+        console.log("-- Decrypt data successfully: ", decrypt);
+        // State 3: Send back ACK
+        client.publish(TOPIC_HANDSHAKE_ECDH_SEND, ackPackageBuffer, { qos: 1 }, (err) => {
+            if (err) {
+                reject(new Error(`Publish failed: ${err.message}`));
+            } else {
+                console.log('-- Successfully published ACK package to', TOPIC_HANDSHAKE_ECDH_SEND);
+            }
+        });
     } catch (error) {
         console.error('Data frame error:', error.message);
         // Implement retry logic or error recovery here
@@ -394,15 +374,20 @@ function parseFrame(message) {
 }
 
 function parseHandshakeFrame(message, identifierId, packetType) {
+    const publicKeyStart = 9;
+    const publicKeyLength = 72;   
+    const authTagLength = 16;    
+
     return {
         preamble: message.readUInt16LE(0),
         identifierId: identifierId,
         packetType: packetType,
         sequenceNumber: message.readUInt16LE(7),
-        publicKey: message.subarray(9, 41), // 32 bytes
-        authTag: message.subarray(41, 57)   // 16 bytes
+        publicKey: message.subarray(publicKeyStart, publicKeyStart + publicKeyLength),
+        authTag: message.subarray(publicKeyStart + publicKeyLength, publicKeyStart + publicKeyLength + authTagLength)
     };
 }
+
 
 function parseDataFrame(message, expectedIdentifierId, expectedPacketType) {
     const NONCE_SIZE = 16;          
@@ -447,19 +432,26 @@ function parseDataFrame(message, expectedIdentifierId, expectedPacketType) {
 }
 
 function logHandshakeFrame(frame) {
-    console.log("Parsed Handshake Frame:");
+    let pubKeyHex = frame.publicKey.toString('hex');
+
+    if (pubKeyHex.length > 32) {
+        pubKeyHex = pubKeyHex.substring(0, 32) + '...';
+    }
+
+    console.log("-- Parsed Handshake Frame:");
     console.table([
-        { "Field": "Preamble", "Value": `0x${frame.preamble.toString(16)}` },
-        { "Field": "Identifier ID", "Value": `0x${frame.identifierId.toString(16)}` },
-        { "Field": "Packet Type", "Value": `0x${frame.packetType.toString(16)}` },
-        { "Field": "Sequence Number", "Value": frame.sequenceNumber },
-        { "Field": "Public Key", "Value": frame.publicKey.toString('hex') },
-        { "Field": "Auth Tag", "Value": frame.authTag.toString('hex') }
+        { "Field": "Preamble",       "Value": `0x${frame.preamble.toString(16)}` },
+        { "Field": "Identifier ID",    "Value": `0x${frame.identifierId.toString(16)}` },
+        { "Field": "Packet Type",      "Value": `0x${frame.packetType.toString(16)}` },
+        { "Field": "Sequence Number",  "Value": frame.sequenceNumber },
+        { "Field": "Public Key",       "Value": pubKeyHex },
+        { "Field": "Auth Tag",         "Value": frame.authTag.toString('hex') }
     ]);
 }
 
+
 function logServerDataFrame(frame) {
-    console.log("Parsed Server Data Frame:");
+    console.log("-- Parsed Server Data Frame:");
     console.table([
         { "Field": "Preamble", "Value": `0x${frame.preamble.toString(16)}` },
         { "Field": "Identifier ID", "Value": `0x${frame.identifierId.toString(16)}` },
@@ -509,7 +501,7 @@ function initMQTT() {
             const startTime = Date.now();
             await handler(message);
             const endTime = Date.now();
-            console.log(`Processed ${topic} in ${endTime - startTime}ms`);
+            console.log(`-- Processed ${topic} in ${endTime - startTime}ms`);
           } catch (error) {
             console.error(`Error handling ${topic}:`, error);
           }
