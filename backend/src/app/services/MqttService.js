@@ -16,21 +16,11 @@ let serverPrivateKey = null;
 let serverSecretKey = null;
 let serverReceivePublic = null;
 
-let ciphertextHex = null;
-let keyHex = null;
-let nonceHex = null;
-
 
 const publicExecutablePath = path.resolve(__dirname, '../diffie-hellman/exec-public');
-const secretExecutablePath = path.resolve(__dirname, '../diffie-hellman/exec-secret');
 
 let client;
-let handshakeState = {
-    initiated: false,
-    completed: false,
-};
 
-// Function to generate public and private keys
 async function generatePublicPrivateKeys() {
     return new Promise((resolve, reject) => {
         execFile(publicExecutablePath, (error, stdout, stderr) => {
@@ -43,8 +33,6 @@ async function generatePublicPrivateKeys() {
                 console.error(`stderr: ${stderr}`);
                 return reject(new Error(stderr));
             }
-
-            // console.log(`Output from public/private key C++ executable: \n${stdout}`);
 
             const publicKeyMatch = stdout.match(/Public Key:\s([0-9a-f]+)/);
             const privateKeyMatch = stdout.match(/Private Key:\s([0-9a-f]+)/);
@@ -61,13 +49,10 @@ async function generatePublicPrivateKeys() {
     });
 }
 
-// Function to generate the secret key
 async function generateSecretKey(myPrivateHex, anotherPublicHex) {
     return new Promise((resolve, reject) => {
-      // Path to your compiled C++ executable.
       const secretExecutablePath = '/home/iot-bts2/HHT_AIT/backend/src/app/diffie-hellman/exec-ecdh-secret';
   
-      // Spawn the executable.
       const child = execFile(secretExecutablePath, (error, stdout, stderr) => {
         if (error) {
           return reject(new Error(`Process error: ${error.message}`));
@@ -75,30 +60,25 @@ async function generateSecretKey(myPrivateHex, anotherPublicHex) {
         if (stderr) {
           console.error(`stderr: ${stderr}`);
         }
-        
-        // The C++ executable should print the secret key as a hex string.
+
         const output = stdout.trim();
         const secretKeyMatch = output.match(/[0-9a-fA-F]+/);
         if (secretKeyMatch) {
           const secretKey = secretKeyMatch[0];
-        //   console.log("-- Generated secret key:", secretKey.toString('hex').slice(0, 16) + "...");
           resolve(secretKey);
         } else {
           reject(new Error("Could not find the secret key in the output."));
         }
       });
   
-      // Write the keys to the process's stdin (format: "<myPrivateHex> <anotherPublicHex>\n")
       child.stdin.write(`${myPrivateHex} ${anotherPublicHex}\n`);
       child.stdin.end();
   
-      // Set a timeout (10 seconds in this case) to prevent hanging indefinitely.
       const timeout = setTimeout(() => {
         child.kill();
         reject(new Error("Process timed out"));
       }, 10000);
   
-      // When the process closes, clear the timeout.
       child.on('close', () => {
         clearTimeout(timeout);
       });
@@ -118,6 +98,22 @@ async function initializeKeys() {
         console.error('Key initialization failed:', error);
         return false;
     }
+}
+
+function parseSensorData(hexString) {
+    let bytes = [];
+    for (let i = 0; i < hexString.length; i += 2) {
+        bytes.push(parseInt(hexString.substr(i, 2), 16));
+    }
+
+    let data = {
+        heartRate: bytes[0],     
+        spo2: bytes[1],         
+        temperature: bytes[2],   
+        acceleration: bytes[3]   
+    };
+
+    return data;
 }
 
 
@@ -173,20 +169,15 @@ function reconstructDecryptedData(decryptedtext) {
 
 function decryptData(ciphertextHex, nonceHex, keyHex) {
     return new Promise((resolve, reject) => {
-      // Build the path to your executable.
-      // Adjust the executable name if necessary.
       const executablePath = '/home/iot-bts2/HHT_AIT/backend/src/app/cryptography/exec-decrypt';
       
-      // Pass the three hex string arguments: ciphertext, nonce, and key.
       execFile(executablePath, [ciphertextHex, nonceHex, keyHex], (error, stdout, stderr) => {
         if (error) {
           return reject(new Error(`Execution error: ${error.message}`));
         }
         if (stderr) {
-          // Optionally log stderr for debugging.
           console.error('stderr:', stderr);
         }
-        // The executable prints the decrypted plaintext as a hex string.
         resolve(stdout.trim());
       });
     });
@@ -289,33 +280,63 @@ async function handleEcdhHandshake(message, identifierId, packetType) {
     }
 }
 
-async function handleDataFrame(message, identifierId, packetType){
+async function handleDataFrame(message, identifierId, packetType) {
+    const ACK_PACKET = Buffer.from([0x02]);
+
     try {
-        // State 1: Parse and validate frame
-        const ackPackage = 0x02;
-        const ackPackageBuffer = Buffer.isBuffer(ackPackage)
-            ? ackPackage
-            : Buffer.from([ackPackage]);
+        // State 1: Parse and validate the frame
         const frame = parseDataFrame(message, identifierId, packetType);
+        if (!frame) {
+            throw new Error('[DAMN] Invalid data frame received -_-');
+        }
+        console.log('[1/4] Parse data frame completed')
         logServerDataFrame(frame);
-        // console.log("encrypted payload: ", frame.encryptedPayload.toString('hex'));
-        // console.log("server secret key: ", serverSecretKey);
-        // console.log("frame nonce: ", frame.nonce.toString('hex'));
-        // State 2: Decrypt data
-        const decrypt = await decryptData(frame.encryptedPayload.toString('hex'), frame.nonce.toString('hex'), serverSecretKey);
-        console.log("-- Decrypt data successfully: ", decrypt);
-        // State 3: Send back ACK
-        client.publish(TOPIC_HANDSHAKE_ECDH_SEND, ackPackageBuffer, { qos: 1 }, (err) => {
+
+        // State 2: Decrypt the data payload
+        const encryptedHex = frame.encryptedPayload.toString('hex');
+        const nonceHex = frame.nonce.toString('hex');
+
+        const decryptedData = await decryptData(encryptedHex, nonceHex, serverSecretKey);
+        if (!decryptedData) {
+            throw new Error('[DAMN] Decryption failed or returned empty data -_-');
+        }
+        console.log(`[2/4] Decrypt data completed:`, decryptedData);
+
+        // State 3: Extract sensor data
+        const data = parseSensorData(decryptedData);
+        if (!data) {
+            throw new Error('[DAMN] Failed to parse sensor data from decrypted payload -_-');
+        }
+        console.log(`[3/4] Parsed sensor data completed`);
+        console.log(data);
+
+        //State ?: Send data to database (FIX ME)
+
+        // State 4: Send ACK response
+        await publishAck(TOPIC_HANDSHAKE_ECDH_SEND, ACK_PACKET);
+        console.log('[NICE] Everything is done')
+
+    } catch (error) {
+        console.error(`-- Data frame error: ${error.message}`);
+        // Optional: Implement retry logic or recovery mechanism
+    }
+}
+
+/**
+ * Helper function to publish ACK response.
+ * Returns a Promise to ensure proper handling with async/await.
+ */
+function publishAck(topic, ackPacket) {
+    return new Promise((resolve, reject) => {
+        client.publish(topic, ackPacket, { qos: 1 }, (err) => {
             if (err) {
-                reject(new Error(`Publish failed: ${err.message}`));
+                reject(new Error(`Failed to publish ACK to ${topic}: ${err.message}`));
             } else {
-                console.log('-- Successfully published ACK package to', TOPIC_HANDSHAKE_ECDH_SEND);
+                console.log(`[4/4] Publish ACK to ${topic} completed`);
+                resolve();
             }
         });
-    } catch (error) {
-        console.error('Data frame error:', error.message);
-        // Implement retry logic or error recovery here
-    }
+    });
 }
 
 // Helper functions
@@ -501,7 +522,7 @@ function initMQTT() {
             const startTime = Date.now();
             await handler(message);
             const endTime = Date.now();
-            console.log(`-- Processed ${topic} in ${endTime - startTime}ms`);
+            console.log(`-> Processed in ${endTime - startTime}ms`);
           } catch (error) {
             console.error(`Error handling ${topic}:`, error);
           }
