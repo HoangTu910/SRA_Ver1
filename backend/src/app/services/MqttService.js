@@ -17,7 +17,7 @@ let serverSecretKey = null;
 let serverReceivePublic = null;
 
 
-const publicExecutablePath = path.resolve(__dirname, '../diffie-hellman/exec-public');
+const publicExecutablePath = path.resolve(__dirname, '../diffie-hellman/exec-ecdh-public');
 
 let client;
 
@@ -245,9 +245,6 @@ async function handleEcdhHandshake(message, identifierId, packetType) {
         // State 1: Parse and validate frame
         const frame = parseHandshakeFrame(message, identifierId, packetType);
         logHandshakeFrame(frame);
-        if (!frame.publicKey || frame.publicKey.length !== 72) {
-            throw new Error('Invalid public key in handshake frame');
-        }
 
         // State 2: Store client public key
         serverReceivePublic = frame.publicKey;
