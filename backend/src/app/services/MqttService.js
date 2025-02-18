@@ -169,19 +169,31 @@ function reconstructDecryptedData(decryptedtext) {
 
 function decryptData(ciphertextHex, nonceHex, keyHex) {
     return new Promise((resolve, reject) => {
-      const executablePath = '/home/iot-bts2/HHT_AIT/backend/src/app/cryptography/exec-decrypt';
-      
-      execFile(executablePath, [ciphertextHex, nonceHex, keyHex], (error, stdout, stderr) => {
-        if (error) {
-          return reject(new Error(`Execution error: ${error.message}`));
-        }
-        if (stderr) {
-          console.error('stderr:', stderr);
-        }
-        resolve(stdout.trim());
-      });
+        const executablePath = '/home/iot-bts2/HHT_AIT/backend/src/app/cryptography/exec-decrypt';
+
+        execFile(executablePath, [ciphertextHex, nonceHex, keyHex], (error, stdout, stderr) => {
+            if (error) {
+                return reject(new Error(`Execution error: ${error.message}`));
+            }
+            if (stderr) {
+                console.error('stderr:', stderr);
+            }
+
+            // Xử lý đầu ra của chương trình C++
+            const outputLines = stdout.trim().split("\n");
+
+            if (outputLines.length < 2) {
+                return reject(new Error("Unexpected output format from decryption executable."));
+            }
+
+            // Lấy đúng dòng output mong muốn
+            const decryptedText = outputLines[0].replace("Decrypted Text: ", "").trim();
+            const authTagHex = outputLines[1].replace("Auth Tag: ", "").trim();
+
+            resolve({ decryptedText, authTagHex });
+        });
     });
-  }
+}
 
 
 const encodedPassword = Buffer.from('123').toString('base64');
@@ -279,32 +291,21 @@ async function handleEcdhHandshake(message, identifierId, packetType) {
 
 async function handleDataFrame(message, identifierId, packetType) {
     const ACK_PACKET = Buffer.from([0x02]);
-
     try {
         // State 1: Parse and validate the frame
-        const frame = parseDataFrame(message, identifierId, packetType);
+        const frame = await parseDataFrame(message, identifierId, packetType);
         if (!frame) {
             throw new Error('[DAMN] Invalid data frame received -_-');
         }
-        console.log('[1/4] Parse data frame completed')
+        console.log('[1/3] Parse data frame completed')
         logServerDataFrame(frame);
 
-        // State 2: Decrypt the data payload
-        const encryptedHex = frame.encryptedPayload.toString('hex');
-        const nonceHex = frame.nonce.toString('hex');
-
-        const decryptedData = await decryptData(encryptedHex, nonceHex, serverSecretKey);
-        if (!decryptedData) {
-            throw new Error('[DAMN] Decryption failed or returned empty data -_-');
-        }
-        console.log(`[2/4] Decrypt data completed:`, decryptedData);
-
         // State 3: Extract sensor data
-        const data = parseSensorData(decryptedData);
+        const data = parseSensorData(frame.decryptedText);
         if (!data) {
             throw new Error('[DAMN] Failed to parse sensor data from decrypted payload -_-');
         }
-        console.log(`[3/4] Parsed sensor data completed`);
+        console.log(`[2/3] Parsed sensor data completed`);
         console.log(data);
 
         //State ?: Send data to database (FIX ME)
@@ -329,7 +330,7 @@ function publishAck(topic, ackPacket) {
             if (err) {
                 reject(new Error(`Failed to publish ACK to ${topic}: ${err.message}`));
             } else {
-                console.log(`[4/4] Publish ACK to ${topic} completed`);
+                console.log(`[3/3] Publish ACK to ${topic} completed`);
                 resolve();
             }
         });
@@ -392,48 +393,72 @@ function parseFrame(message) {
 }
 
 function parseHandshakeFrame(message, identifierId, packetType) {
-    const publicKeyStart = 9;
-    const publicKeyLength = 72;   
-    const authTagLength = 16;    
+    const publicKeyStart = 9;         // Public key starts at offset 9
+    const publicKeyLength = 48;       // Public key is 48 bytes
+    const sequenceNumberOffset = 7;   // Sequence number offset
+    const endMarkerOffset = publicKeyStart + publicKeyLength;  // End marker offset (calculated based on previous data)
 
     return {
-        preamble: message.readUInt16LE(0),
-        identifierId: identifierId,
-        packetType: packetType,
-        sequenceNumber: message.readUInt16LE(7),
-        publicKey: message.subarray(publicKeyStart, publicKeyStart + publicKeyLength),
-        authTag: message.subarray(publicKeyStart + publicKeyLength, publicKeyStart + publicKeyLength + authTagLength)
+        preamble: message.readUInt16LE(0),                               // 2 bytes for preamble
+        identifierId: identifierId,                                       // Unique identifier passed in the argument
+        packetType: packetType,                                           // Packet type passed in the argument
+        sequenceNumber: message.readUInt16LE(sequenceNumberOffset),      // 2 bytes for sequence number
+        publicKey: message.subarray(publicKeyStart, publicKeyStart + publicKeyLength), // 32 bytes for public key
+        endMarker: message.readUInt16LE(endMarkerOffset)                  // 2 bytes for end marker
     };
 }
 
-
-function parseDataFrame(message, expectedIdentifierId, expectedPacketType) {
-    const NONCE_SIZE = 16;          
+async function parseDataFrame(message, expectedIdentifierId, expectedPacketType) {      
     const AUTH_TAG_SIZE = 16;
 
     // Parse fixed header fields
     const s_preamble = message.readUInt16LE(0);           // offset 0, 2 bytes
-    const s_identifierId = message.readUInt32LE(2);         // offset 2, 4 bytes
-    const s_packetType = message.readUInt8(6);              // offset 6, 1 byte
-    const s_sequenceNumber = message.readUInt16LE(7);       // offset 7, 2 bytes
-    const s_timestamp = message.readBigUInt64LE(9);         // offset 9, 8 bytes
-    const s_nonce = message.subarray(17, 17 + NONCE_SIZE);   // offset 17, 16 bytes
+    const s_identifierId = message.readUInt32LE(2);       // offset 2, 4 bytes
+    const s_packetType = message.readUInt8(6);           // offset 6, 1 byte
+    const s_sequenceNumber = message.readUInt16LE(7);    // offset 7, 2 bytes
+    const s_timestamp = message.readBigUInt64LE(9);      // offset 9, 8 bytes
+    const s_nonce = message.subarray(17, 33);            // offset 17, 16 bytes
 
-    const s_payloadLength = message.readUInt16LE(33);       // offset 33, 2 bytes
+    const s_payloadLength = message.readUInt16LE(33);    // offset 33, 2 bytes
 
-    const encryptedPayloadStart = 35;                       // immediately after header
+    const encryptedPayloadStart = 35;
     const encryptedPayloadEnd = encryptedPayloadStart + s_payloadLength;
     const authTagStart = encryptedPayloadEnd;
     const authTagEnd = authTagStart + AUTH_TAG_SIZE;
+    const s_endMarkerOffset = authTagEnd;
 
     const s_encryptedPayload = message.subarray(encryptedPayloadStart, encryptedPayloadEnd);
     const s_authTag = message.subarray(authTagStart, authTagEnd);
+    const s_endMarker = message.readUInt16LE(s_endMarkerOffset);  // Đọc end marker
+
+    const encryptedHex = s_encryptedPayload.toString('hex');
+    const nonceHex = s_nonce.toString('hex');
+
+    console.log("Auth Tag (from frame):", s_authTag.toString('hex'));
+
+    const { decryptedText, authTagHex } = await decryptData(encryptedHex, nonceHex, serverSecretKey);
+    const authTag = Buffer.from(authTagHex, 'hex');
+
+    console.log("Decrypt: ", decryptedText);
+    console.log("Auth Tag (from decryption):", authTag.toString('hex'));
+
+    if (!decryptedText) {
+        throw new Error('[DAMN] Decryption failed or returned empty data -_-');
+    }
+
+    // So sánh auth tag sau khi convert về Buffer
+    if (authTag.compare(s_authTag) !== 0) {
+        throw new Error(`Auth tag mismatch: expected ${s_authTag.toString('hex')}, got ${authTag.toString('hex')}`);
+    }
 
     if (s_identifierId !== expectedIdentifierId) {
         throw new Error(`Identifier ID mismatch: expected ${expectedIdentifierId}, got ${s_identifierId}`);
     }
     if (s_packetType !== expectedPacketType) {
         throw new Error(`Packet type mismatch: expected ${expectedPacketType}, got ${s_packetType}`);
+    }
+    if (s_endMarker.toString(16) !== (0xAABB).toString(16)) {
+        throw new Error(`End marker mismatch: expected ${0xAABB.toString(16)}, got ${s_endMarker.toString(16)}`);
     }
 
     return {
@@ -445,9 +470,12 @@ function parseDataFrame(message, expectedIdentifierId, expectedPacketType) {
         nonce: s_nonce,
         payloadLength: s_payloadLength,
         encryptedPayload: s_encryptedPayload,
-        authTag: s_authTag
+        authTag: s_authTag,
+        endMarker: s_endMarker,
+        decryptedText
     };
 }
+
 
 function logHandshakeFrame(frame) {
     let pubKeyHex = frame.publicKey.toString('hex');
@@ -459,14 +487,13 @@ function logHandshakeFrame(frame) {
     console.log("-- Parsed Handshake Frame:");
     console.table([
         { "Field": "Preamble",       "Value": `0x${frame.preamble.toString(16)}` },
-        { "Field": "Identifier ID",    "Value": `0x${frame.identifierId.toString(16)}` },
-        { "Field": "Packet Type",      "Value": `0x${frame.packetType.toString(16)}` },
-        { "Field": "Sequence Number",  "Value": frame.sequenceNumber },
-        { "Field": "Public Key",       "Value": pubKeyHex },
-        { "Field": "Auth Tag",         "Value": frame.authTag.toString('hex') }
+        { "Field": "Identifier ID",  "Value": `0x${frame.identifierId.toString(16)}` },
+        { "Field": "Packet Type",    "Value": `0x${frame.packetType.toString(16)}` },
+        { "Field": "Sequence Number", "Value": frame.sequenceNumber },
+        { "Field": "Public Key",     "Value": pubKeyHex },
+        { "Field": "End Marker",     "Value": `0x${frame.endMarker.toString(16)}` }
     ]);
 }
-
 
 function logServerDataFrame(frame) {
     console.log("-- Parsed Server Data Frame:");
@@ -479,7 +506,8 @@ function logServerDataFrame(frame) {
         { "Field": "Nonce", "Value": frame.nonce.toString('hex') },
         { "Field": "Payload Length", "Value": frame.payloadLength },
         { "Field": "Encrypted Payload", "Value": frame.encryptedPayload.toString('hex') },
-        { "Field": "Auth Tag", "Value": frame.authTag.toString('hex') }
+        { "Field": "Auth Tag", "Value": frame.authTag.toString('hex') },
+        { "Field": "End Marker", "Value": `0x${frame.endMarker.toString(16)}`}
     ]);
 }
 
@@ -551,103 +579,3 @@ module.exports = {
 
 
 
-// client.on('message', async (topic, message) => {
-//     const startTime = Date.now();
-//     const hexData = message.toString('hex'); // Convert message to HEX string
-//     const messageBuffer = Buffer.from(hexData, 'hex');
-//     //console.log(`Raw ${topic}:`, messageBuffer);
-
-//     if (topic === 'handshake/syn') {
-//         // Handle SYN from ESP32
-//         console.log('Handshake SYN received.');
-//         const commandSyn = messageBuffer[0];
-//         console.log(`Command SYN value: ${commandSyn.toString(16).toUpperCase()}`);
-//         client.publish('handshake/syn-ack', SYN_ACK, { qos: 1 }, (err) => {
-//             if (err) {
-//                 console.error('Failed to publish SYN-ACK:', err);
-//             } else {
-//                 console.log('Published SYN-ACK');
-//             }
-//         });
-//     } else if (topic === 'handshake/syn-ack') {
-//         // Handle SYN-ACK response
-//         console.log('Handshake SYN-ACK received.');
-//         // Wait for ACK from the ESP32
-//     } else if (topic === 'handshake/ack') {
-//         if (message.toString() === ACK.toString()) {
-//             console.log('Handshake ACK received.');
-//             // client.subscribe('sensors/data', { qos: 1 }, (err) => {
-//             //     if (err) {
-//             //         console.error(`Failed to subscribe to sensors/data:`, err);
-//             //     } else {
-//             //         console.log('Subscribed to sensors/data');
-//             //     }
-//             // });
-//         }
-//     } else if (topic === 'sensors/data') {
-//         try {
-//             const data = JSON.parse(message.toString());
-//             //console.log('Data: ', data);
-//             const encryptDataBuffer = Buffer.from(data.dataEncrypted);
-//             const nonce = Buffer.from(data.nonce);
-//             // const key = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]);
-//             serverSecret = await generateSecretKey(serverPrivateKey, serverReceivePublic);
-//             console.log('Server Secret: ', serverSecret);
-//             const decryptedData = await decryptData(encryptDataBuffer, nonce, serverSecret);
-//             // console.log('Decrypted Data Length: ', decryptedData.length);
-//             // console.log('Decrypted Data Buffer: ', decryptedData);
-//             console.log('Decrypted Data (Hex): ', decryptedData.toString('hex'));
-//             const result = reconstructDecryptedData(decryptedData);
-//             // console.log('Device ID: ', result.deviceId);
-//             // console.log('Heart Rate: ', result.heartRate);
-//             // console.log('Temperature: ', result.temperature);
-//             // console.log('SPO2: ', result.spO2);
-//             // console.log('Anomaly: ', result.isanomaly);
-//             // Write data to Firestore
-//             const uploadData = {
-//                 heart_rate: result.heartRate,
-//                 temperature: result.temperature,
-//                 spO2: result.spO2,
-//                 acceleration: result.acceleration,
-//                 isanomaly: result.isanomaly
-//             };
-
-//             await DeviceDataService.createDeviceData(uploadData, result.deviceId);
-//             const endTime = Date.now();
-//             console.log(`Processed message in ${endTime - startTime}ms`);
-//         } catch (e) {
-//             console.error('Failed to parse message or write to Firestore:', e);
-//         }
-//     } else if (topic === TOPIC_TO_RECEIVE_PUBLIC_FROM_CLIENT) {
-//         const hexData = message.toString('hex');
-//         const messageBuffer = Buffer.from(hexData, 'hex');
-//         const publicKeyReceiveFromClient = messageBuffer;
-//         serverReceivePublic = publicKeyReceiveFromClient.toString();
-//         console.log('[PUBLIC RECEIVED]: ', serverReceivePublic.toString());
-//         if (serverReceivePublic != null) {
-//             client.publish(TOPIC_TO_PUBLIC_KEY_TO_CLIENT, serverPublicKey.toString('hex'), { qos: 1 }, (err) => {
-//                 if (err) {
-//                     console.error('Failed to publish SERVER PUBLIC:', err);
-//                 } else {
-//                     console.log('Published SERVER PUBLIC');
-//                 }
-//             });
-//             //Wait for client receive and send back noti that received
-//         }
-//     } else if (topic == TOPIC_HANDSHAKE_ECDH){
-//         const s_preamble = message.readUInt16LE(0);        // 2 bytes
-//         const s_identifierId = message.readUInt32LE(2);    // 4 bytes
-//         const s_packetType = message.readUInt8(6);         // 1 byte
-//         const s_sequenceNumber = message.readUInt16LE(7);  // 2 bytes
-//         const s_publicKey = message.slice(9, 9 + 32);      // 32 bytes
-//         const s_authTag = message.slice(41, 41 + 16);      // 16 bytes
-//         // Log the parsed values.
-//         console.log("Parsed Handshake Frame:");
-//         console.log("  Preamble:       0x" + s_preamble.toString(16));
-//         console.log("  Identifier ID:  0x" + s_identifierId.toString(16));
-//         console.log("  Packet Type:    0x" + s_packetType.toString(16));
-//         console.log("  Sequence Number:", s_sequenceNumber);
-//         console.log("  Public Key:", s_publicKey.toString('hex'));
-//         console.log("  Auth Tag: ", s_authTag.toString('hex'));
-//     }
-// });

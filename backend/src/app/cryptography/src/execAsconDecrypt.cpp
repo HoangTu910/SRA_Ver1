@@ -25,10 +25,6 @@ std::vector<unsigned char> hexToBytes(const std::string &hex)
 
 int main(int argc, char *argv[])
 {
-    // Expecting 3 command-line arguments:
-    // 1. ciphertext (hex)
-    // 2. nonce (hex)
-    // 3. key (hex)
     if (argc < 4)
     {
         std::cerr << "Usage: " << argv[0] << " <ciphertextHex> <nonceHex> <keyHex>" << std::endl;
@@ -44,11 +40,18 @@ int main(int argc, char *argv[])
     std::vector<unsigned char> nonce = hexToBytes(nonceHex);
     std::vector<unsigned char> key = hexToBytes(keyHex);
 
+    // Check if ciphertext contains at least an auth tag (16 bytes)
+    if (ciphertext.size() < 16)
+    {
+        std::cerr << "Error: Ciphertext too short to contain an auth tag!" << std::endl;
+        return 1;
+    }
+
+    // Extract the last 16 bytes as the auth tag
+    std::vector<unsigned char> authTag(ciphertext.end() - 16, ciphertext.end());
+
     std::vector<unsigned char> plaintext(ciphertext.size());
     unsigned long long plaintextLen = 0;
-
-    // Allocate nsec buffer (if required; often unused).
-    unsigned char nsec[16] = {0};
 
     // Call the decryption function.
     const unsigned char *associatedData = (const unsigned char *)"DeslabAIoT0x910";
@@ -72,12 +75,22 @@ int main(int argc, char *argv[])
     }
 
     // Convert plaintext to a hex string for output.
-    std::ostringstream oss;
+    std::ostringstream plaintextHexStream;
     for (unsigned long long i = 0; i < plaintextLen; i++)
     {
-        oss << std::hex << std::setfill('0') << std::setw(2) << (int)plaintext[i];
+        plaintextHexStream << std::hex << std::setfill('0') << std::setw(2) << (int)plaintext[i];
     }
 
-    std::cout << oss.str() << std::endl;
+    // Convert auth tag to hex string
+    std::ostringstream authTagHexStream;
+    for (const auto &byte : authTag)
+    {
+        authTagHexStream << std::hex << std::setfill('0') << std::setw(2) << (int)byte;
+    }
+
+    // Print results
+    std::cout << "Decrypted Text: " << plaintextHexStream.str() << std::endl;
+    std::cout << "Auth Tag: " << authTagHexStream.str() << std::endl;
+
     return 0;
 }
