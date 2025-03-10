@@ -91,8 +91,8 @@ async function initializeKeys() {
         const { publicKey, privateKey } = await generatePublicPrivateKeys();
         serverPublicKey = publicKey;
         serverPrivateKey = privateKey;
-        console.log("-- Generated [Public] Key:", serverPublicKey.toString('hex').slice(0, 16) + "...");
-        console.log("-- Generated [Private] Key:", privateKey.toString('hex').slice(0, 16) + "..."); // Never log full private keys
+        // console.log("-- Generated [Public] Key:", serverPublicKey.toString('hex').slice(0, 16) + "...");
+        // console.log("-- Generated [Private] Key:", privateKey.toString('hex').slice(0, 16) + "..."); // Never log full private keys
         return true;
     } catch (error) {
         console.error('Key initialization failed:', error);
@@ -256,7 +256,7 @@ async function handleEcdhHandshake(message, identifierId, packetType) {
     try {
         // State 1: Parse and validate frame
         const frame = parseHandshakeFrame(message, identifierId, packetType);
-        logHandshakeFrame(frame);
+        // logHandshakeFrame(frame);
 
         // State 2: Store client public key
         serverReceivePublic = frame.publicKey;
@@ -274,14 +274,14 @@ async function handleEcdhHandshake(message, identifierId, packetType) {
             if (err) {
                 reject(new Error(`Publish failed: ${err.message}`));
             } else {
-                console.log('-- Successfully published public key to', TOPIC_HANDSHAKE_ECDH_SEND);
+                // console.log('-- Successfully published public key to', TOPIC_HANDSHAKE_ECDH_SEND);
             }
         });
 
         //State 5: Server compute secret key
         serverReceivePublic = serverReceivePublic.toString('hex');
         serverSecretKey = await generateSecretKey(serverPrivateKey, serverReceivePublic);
-        console.log("-- Generated secret key:", serverSecretKey.toString('hex').slice(0, 16) + "...");
+        // console.log("-- Generated secret key:", serverSecretKey.toString('hex').slice(0, 16) + "...");
 
     } catch (error) {
         console.error('Handshake error:', error.message);
@@ -294,6 +294,7 @@ async function handleDataFrame(message, identifierId, packetType) {
     try {
         // State 1: Parse and validate the frame
         const frame = await parseDataFrame(message, identifierId, packetType);
+        
         if (!frame) {
             throw new Error('[DAMN] Invalid data frame received -_-');
         }
@@ -312,7 +313,7 @@ async function handleDataFrame(message, identifierId, packetType) {
 
         // State 4: Send ACK response
         await publishAck(TOPIC_HANDSHAKE_ECDH_SEND, ACK_PACKET);
-        console.log('[NICE] Everything is done')
+        console.log('[NICE] Everything is done');
 
     } catch (error) {
         console.error(`-- Data frame error: ${error.message}`);
@@ -408,47 +409,91 @@ function parseHandshakeFrame(message, identifierId, packetType) {
     };
 }
 
-async function parseDataFrame(message, expectedIdentifierId, expectedPacketType) {      
-    const AUTH_TAG_SIZE = 16;
+const epoch = new Date(0);
+function MACCompute() {
+    // Start from Unix epoch (January 1, 1970 00:00:00 UTC)
+    // const minute = epoch.getUTCMinutes();
+    // const hour = epoch.getUTCHours(); 
+    // const day = epoch.getUTCDate();
+    // const month = epoch.getUTCMonth() + 1;  // getUTCMonth() returns 0-11
+    // const year = epoch.getUTCFullYear();
+    
+    const minute = 30;
+    const hour = 12;
+    const day = 15;
+    const month = 6;    
+    const year = 2023;
 
-    // Parse fixed header fields
+    let T = 0;
+    T |= (minute & 0x3F) >>> 0;
+    T |= ((hour & 0x1F) << 6) >>> 0;
+    T |= ((day & 0x1F) << 11) >>> 0;
+    T |= ((month & 0x0F) << 16) >>> 0;
+    T |= ((year & 0xFFF) << 20) >>> 0;
+
+    const K = 0x24C8E560 >>> 0;
+    const T_low_rotl = (((T << 7) | (T >>> (32 - 7))) >>> 0);
+    const A = (T ^ T_low_rotl) >>> 0;
+    const T_high_rotr = (((T >>> 11) | (T << (32 - 11))) >>> 0);
+    const B = (T ^ T_high_rotr) >>> 0;
+    const MAC_final = ((A ^ B) ^ K) >>> 0;
+
+    // console.log("T =", T >>> 0);
+    // console.log("T_low_rotl =", T_low_rotl >>> 0);
+    // console.log("A =", A >>> 0);
+    // console.log("T_high_rotr =", T_high_rotr >>> 0);
+    // console.log("B =", B >>> 0);
+    // console.log("MAC_final =", MAC_final >>> 0);
+
+    return MAC_final >>> 0; 
+}
+
+async function parseDataFrame(message, expectedIdentifierId, expectedPacketType) {      
+    const NONCE_SIZE = 16;  
+    const AUTH_TAG_SIZE = 4;
+
+    // Parse fixed header fields according to structure order
     const s_preamble = message.readUInt16LE(0);           // offset 0, 2 bytes
     const s_identifierId = message.readUInt32LE(2);       // offset 2, 4 bytes
-    const s_packetType = message.readUInt8(6);           // offset 6, 1 byte
-    const s_sequenceNumber = message.readUInt16LE(7);    // offset 7, 2 bytes
-    const s_timestamp = message.readBigUInt64LE(9);      // offset 9, 8 bytes
-    const s_nonce = message.subarray(17, 33);            // offset 17, 16 bytes
+    const s_packetType = message.readUInt8(6);            // offset 6, 1 byte
+    const s_sequenceNumber = message.readUInt16LE(7);     // offset 7, 2 bytes
+    const s_timestamp = message.readBigUInt64LE(9);       // offset 9, 8 bytes
+    const s_nonce = message.subarray(17, 17 + NONCE_SIZE); // offset 17, 16 bytes
+    const s_payloadLength = message.readUInt16LE(17 + NONCE_SIZE); // offset 33, 2 bytes
 
-    const s_payloadLength = message.readUInt16LE(33);    // offset 33, 2 bytes
-
-    const encryptedPayloadStart = 35;
+    // Calculate offsets
+    const encryptedPayloadStart = 17 + NONCE_SIZE + 2;    // offset 35
     const encryptedPayloadEnd = encryptedPayloadStart + s_payloadLength;
-    const authTagStart = encryptedPayloadEnd;
-    const authTagEnd = authTagStart + AUTH_TAG_SIZE;
-    const s_endMarkerOffset = authTagEnd;
+    const macTagStart = encryptedPayloadEnd;
+    const macTagEnd = macTagStart + AUTH_TAG_SIZE;        // uint64_t is 8 bytes
+    const s_endMarkerOffset = macTagEnd;
 
     const s_encryptedPayload = message.subarray(encryptedPayloadStart, encryptedPayloadEnd);
-    const s_authTag = message.subarray(authTagStart, authTagEnd);
-    const s_endMarker = message.readUInt16LE(s_endMarkerOffset);  // Đọc end marker
+    const s_macTag = message.subarray(macTagStart, macTagEnd);
+    const s_endMarker = message.readUInt16LE(s_endMarkerOffset);
 
     const encryptedHex = s_encryptedPayload.toString('hex');
     const nonceHex = s_nonce.toString('hex');
 
-    console.log("Auth Tag (from frame):", s_authTag.toString('hex'));
+    // console.log("Encrypted Payload: ", encryptedHex);
+    // console.log("Nonce: ", nonceHex);
+    // console.log("Server Secret Key: ", serverSecretKey);
 
     const { decryptedText, authTagHex } = await decryptData(encryptedHex, nonceHex, serverSecretKey);
-    const authTag = Buffer.from(authTagHex, 'hex');
-
-    console.log("Decrypt: ", decryptedText);
-    console.log("Auth Tag (from decryption):", authTag.toString('hex'));
+    const macTag = MACCompute();
+    const buffer = Buffer.from(s_macTag);
+    const receivedMac = buffer.readUInt32LE(0);
+    // console.log("Received MAC Tag: ", macTag);
+    // console.log("Computed MAC Tag: ", receivedMac);
 
     if (!decryptedText) {
         throw new Error('[DAMN] Decryption failed or returned empty data -_-');
     }
 
-    // So sánh auth tag sau khi convert về Buffer
-    if (authTag.compare(s_authTag) !== 0) {
-        throw new Error(`Auth tag mismatch: expected ${s_authTag.toString('hex')}, got ${authTag.toString('hex')}`);
+    // Compare mac tag (8 bytes)
+    if (macTag !== receivedMac)
+    {    
+        throw new Error(`MAC tag mismatch: expected ${s_macTag.toString('hex')}, got ${authTag.toString(16)}`);
     }
 
     if (s_identifierId !== expectedIdentifierId) {
@@ -457,9 +502,11 @@ async function parseDataFrame(message, expectedIdentifierId, expectedPacketType)
     if (s_packetType !== expectedPacketType) {
         throw new Error(`Packet type mismatch: expected ${expectedPacketType}, got ${s_packetType}`);
     }
-    if (s_endMarker.toString(16) !== (0xAABB).toString(16)) {
+    if (s_endMarker.toString(16) !== (0xAABB).toString(16)) {  // Assuming 0xAABB as expected end marker
         throw new Error(`End marker mismatch: expected ${0xAABB.toString(16)}, got ${s_endMarker.toString(16)}`);
     }
+
+    const endTime = Date.now();
 
     return {
         preamble: s_preamble,
@@ -470,7 +517,7 @@ async function parseDataFrame(message, expectedIdentifierId, expectedPacketType)
         nonce: s_nonce,
         payloadLength: s_payloadLength,
         encryptedPayload: s_encryptedPayload,
-        authTag: s_authTag,
+        macTag: s_macTag,  // Changed from authTag to match structure
         endMarker: s_endMarker,
         decryptedText
     };
@@ -506,7 +553,7 @@ function logServerDataFrame(frame) {
         { "Field": "Nonce", "Value": frame.nonce.toString('hex') },
         { "Field": "Payload Length", "Value": frame.payloadLength },
         { "Field": "Encrypted Payload", "Value": frame.encryptedPayload.toString('hex') },
-        { "Field": "Auth Tag", "Value": frame.authTag.toString('hex') },
+        { "Field": "Auth Tag", "Value": frame.macTag.toString('hex') },
         { "Field": "End Marker", "Value": `0x${frame.endMarker.toString(16)}`}
     ]);
 }
@@ -547,7 +594,7 @@ function initMQTT() {
             const startTime = Date.now();
             await handler(message);
             const endTime = Date.now();
-            console.log(`-> Processed in ${endTime - startTime}ms`);
+            // console.log(`-> Processed in ${endTime - startTime}ms`);
           } catch (error) {
             console.error(`Error handling ${topic}:`, error);
           }
