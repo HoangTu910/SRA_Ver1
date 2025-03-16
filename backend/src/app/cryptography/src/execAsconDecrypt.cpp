@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include "asconDecrypt.hpp"
 
+#define PRIVATE_GENERATE 8
+
 std::vector<unsigned char> hexToBytes(const std::string &hex)
 {
     std::vector<unsigned char> bytes;
@@ -25,6 +27,7 @@ std::vector<unsigned char> hexToBytes(const std::string &hex)
 
 int main(int argc, char *argv[])
 {
+    uint8_t private_key_for_generate[PRIVATE_GENERATE] = {0xA7, 0x1F, 0x3B, 0xC8, 0x56, 0xE4, 0x92, 0x7D};
     if (argc < 4)
     {
         std::cerr << "Usage: " << argv[0] << " <ciphertextHex> <nonceHex> <keyHex>" << std::endl;
@@ -45,6 +48,10 @@ int main(int argc, char *argv[])
     {
         std::cerr << "Error: Ciphertext too short to contain an auth tag!" << std::endl;
         return 1;
+    }
+
+    for(int i = 0; i < key.size(); i++) {
+        key[i] ^= private_key_for_generate[i % PRIVATE_GENERATE];
     }
 
     // Extract the last 16 bytes as the auth tag

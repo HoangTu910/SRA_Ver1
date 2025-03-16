@@ -17,7 +17,7 @@ let serverSecretKey = null;
 let serverReceivePublic = null;
 
 
-const publicExecutablePath = path.resolve(__dirname, '../diffie-hellman/exec-ecdh-public');
+const publicExecutablePath = path.resolve(__dirname, '../diffie-hellman/exec-ecdh-public.exe');
 
 let client;
 
@@ -51,7 +51,7 @@ async function generatePublicPrivateKeys() {
 
 async function generateSecretKey(myPrivateHex, anotherPublicHex) {
     return new Promise((resolve, reject) => {
-      const secretExecutablePath = '/home/iot-bts2/HHT_AIT/backend/src/app/diffie-hellman/exec-ecdh-secret';
+      const secretExecutablePath = 'C:/Users/Hii/Desktop/HHT_AIT/backend/src/app/diffie-hellman/exec-ecdh-secret.exe';
   
       const child = execFile(secretExecutablePath, (error, stdout, stderr) => {
         if (error) {
@@ -169,7 +169,7 @@ function reconstructDecryptedData(decryptedtext) {
 
 function decryptData(ciphertextHex, nonceHex, keyHex) {
     return new Promise((resolve, reject) => {
-        const executablePath = '/home/iot-bts2/HHT_AIT/backend/src/app/cryptography/exec-decrypt';
+        const executablePath = 'C:/Users/Hii/Desktop/HHT_AIT/backend/src/app/cryptography/exec-decrypt.exe';
 
         execFile(executablePath, [ciphertextHex, nonceHex, keyHex], (error, stdout, stderr) => {
             if (error) {
