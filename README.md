@@ -1,4 +1,4 @@
-### This is the old version, check for the new version in SRA family reposirories
+### This is the old version, check for the new version in SRA family repositories
 # AIoT for Remote Healthcare System (Update 07/12/2024)
 
 ## General System
