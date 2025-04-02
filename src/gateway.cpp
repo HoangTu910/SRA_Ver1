@@ -7,9 +7,6 @@
 // const char* ssid = "FETEL@DESLAB_SV";
 // const char* password = "deslabSV";
 
-const char* ssid = "Hoang Tuan";
-const char* password = "03081973";
-
 // MQTT Broker
 const int mqtt_port = 1885;
 const char* mqtt_user = "admin";
